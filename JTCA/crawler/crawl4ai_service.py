@@ -92,25 +92,73 @@ def _parse_hs_codes_from_text(text: str, source_url: str, origin: str) -> list[d
 # ─────────────────────────────────────────────
 # Async Crawler
 # ─────────────────────────────────────────────
-async def _crawl_single_url(
+def _is_pdf_url(url: str) -> bool:
+    """Return True if the URL points to a PDF file."""
+    return url.lower().split("?")[0].strip().endswith(".pdf")
+
+
+async def _crawl_pdf_url(
     url: str,
     origin: str,
     log_callback: Callable[[str], None] | None = None,
 ) -> list[dict]:
-    """Crawl a single URL and extract tariff rules."""
+    """
+    Crawl a PDF URL using crawl4ai's PDFContentScrapingStrategy.
+    Falls back to raw text extraction if strategy is unavailable.
+    """
     def log(msg):
         logger.info(msg)
         if log_callback:
             log_callback(msg)
 
-    if not HAS_CRAWL4AI:
-        log("[Crawler] crawl4ai not installed. Cannot crawl.")
+    log(f"[Crawler] Detected PDF URL — using PDFContentScrapingStrategy: {url}")
+
+    try:
+        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, PDFContentScrapingStrategy
+
+        browser_config = BrowserConfig(headless=True, verbose=False)
+        run_config = CrawlerRunConfig(
+            scraping_strategy=PDFContentScrapingStrategy(),
+            word_count_threshold=5,
+        )
+
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            result = await crawler.arun(url=url, config=run_config)
+
+            if not result.success:
+                log(f"[Crawler] PDFContentScrapingStrategy failed for: {url}")
+                return []
+
+            text = result.markdown or result.cleaned_html or ""
+            log(f"[Crawler] PDF extracted {len(text)} characters from {url}")
+            rules = _parse_hs_codes_from_text(text, url, origin)
+            log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF")
+            return rules
+
+    except ImportError as e:
+        log(f"[Crawler] PDFContentScrapingStrategy not available ({e}). "
+            "Upgrade crawl4ai: pip install -U crawl4ai")
         return []
+    except Exception as e:
+        log(f"[Crawler] PDF crawl error for {url}: {e}")
+        return []
+
+
+async def _crawl_webpage_url(
+    url: str,
+    origin: str,
+    log_callback: Callable[[str], None] | None = None,
+) -> list[dict]:
+    """Crawl a standard webpage URL and extract tariff rules."""
+    def log(msg):
+        logger.info(msg)
+        if log_callback:
+            log_callback(msg)
 
     try:
         from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
-        log(f"[Crawler] Fetching: {url}")
+        log(f"[Crawler] Fetching webpage: {url}")
 
         browser_config = BrowserConfig(headless=True, verbose=False)
         run_config = CrawlerRunConfig(
@@ -137,6 +185,31 @@ async def _crawl_single_url(
     except Exception as e:
         log(f"[Crawler] Error crawling {url}: {e}")
         return []
+
+
+async def _crawl_single_url(
+    url: str,
+    origin: str,
+    log_callback: Callable[[str], None] | None = None,
+) -> list[dict]:
+    """
+    Smart dispatcher — detects PDF vs webpage and routes accordingly.
+    - PDF URLs  → PDFContentScrapingStrategy (crawl4ai native)
+    - Web URLs  → standard AsyncWebCrawler
+    """
+    def log(msg):
+        logger.info(msg)
+        if log_callback:
+            log_callback(msg)
+
+    if not HAS_CRAWL4AI:
+        log("[Crawler] crawl4ai not installed. Cannot crawl.")
+        return []
+
+    if _is_pdf_url(url):
+        return await _crawl_pdf_url(url, origin, log_callback)
+    else:
+        return await _crawl_webpage_url(url, origin, log_callback)
 
 
 async def run_crawler_async(
