@@ -94,7 +94,7 @@ def format_context_for_llm(retrieved: list[dict]) -> str:
         lines.append(f"[Rule {i}] Similarity: {rule['similarity_score']}%")
         lines.append(f"  HS Code: {rule['hs_code']}")
         lines.append(f"  Description: {rule['product_description']}")
-        lines.append(f"  Origin: {rule['origin_country']} → {rule['destination_country']}")
+        lines.append(f"  Origin: {rule['origin_country']} -> {rule['destination_country']}")
         lines.append(f"  Tariff Rate: {rule['tariff_percent']}%")
         lines.append(f"  FTA: {rule['fta_name']}")
         lines.append(f"  Source: {rule['regulation_source']}")

@@ -27,81 +27,147 @@ try:
     from PIL import Image
     import numpy as np
     HAS_EASYOCR = True
-    reader = easyocr.Reader(['en'], gpu=False)
 except ImportError as e:
     HAS_EASYOCR = False
-    logger.warning(f"easyocr or numpy not installed. Scanned PDF support unavailable. Detail: {e}")
+    logger.warning(f"easyocr or PIL/numpy not installed. Scanned PDF support unavailable. Detail: {e}")
+
+# EasyOCR reader is lazy-loaded on first use to avoid slow startup
+_easyocr_reader = None
+
+def _get_easyocr_reader():
+    """Lazy-load EasyOCR reader only when actually needed."""
+    global _easyocr_reader
+    if _easyocr_reader is None:
+        logger.info("[OCR] Loading EasyOCR reader (first use)...")
+        _easyocr_reader = easyocr.Reader(['en'], gpu=False)
+        logger.info("[OCR] EasyOCR reader ready.")
+    return _easyocr_reader
 
 
 # ─────────────────────────────────────────────
 # Regex Extraction Patterns
 # ─────────────────────────────────────────────
+
+# Expanded list of countries for matching in table columns
+_COUNTRIES = (
+    r"Germany|China|Malaysia|Japan|USA|United\s*States|Taiwan|Mexico|Vietnam|"
+    r"Singapore|Thailand|South\s*Korea|India|France|United\s*Kingdom|UK|"
+    r"Indonesia|Philippines|Brazil|Netherlands|Poland|Czech\s*Republic|"
+    r"Hungary|Italy|Spain|Hong\s*Kong|Australia|Canada|Turkey|Israel"
+)
+
 PATTERNS = {
     "part_number": [
-        r"\b(VCAS121030H620DP|3AA06259500|TEMP-SNSR-IND-V1|BRD-ASSY-MAIN)\b",
-        r"(?:Manufacturing\s*Part\s*Number|Mfg\s*Part\s*#|MPN|Part\s*Number|P/N|PN)\s*[:\-]?\s*([A-Z0-9\-_]{4,30})",
-        r"(?:Item\s*Code|SKU)\s*[:\-]?\s*([A-Z0-9\-_]{4,30})",
+        # Explicit label first (most reliable) - require separator
+        r"(?i)(?:Manufacturing[^\S\n]*Part[^\S\n]*(?:Number|#)|Mfg\.?[^\S\n]*Part[^\S\n]*#|MPN|Part[^\S\n]*(?:Number|No\.?|#)|P/N)[^\S\n]*[:\-][^\S\n]*([A-Z0-9][A-Z0-9\-_.]{3,30})",
+        r"(?i)(?:Item[^\S\n]*Code|SKU)[^\S\n]*[:\-][^\S\n]*([A-Z0-9][A-Z0-9\-_.]{3,30})",
+        # Tab-separated table: first column is part#
+        r"^([A-Z][A-Z0-9\-_.]{2,30})\t",
+        # Single-space table row: ALL-CAPS part# at line start, followed by mixed-case description
+        # Must NOT be a known invoice label word (Shipment, Supplier, Invoice, Plant, Footer...)
+        r"^(?!(?:Shipment|Supplier|Invoice|Plant|Material|Shipping|Country|WTO|FTA|Footer|Compliance|Generated|Page)\b)([A-Z][A-Z0-9\-]{2,30})(?=\s+[A-Z][a-z])",
     ],
     "product_description": [
-        r"\b(?:VCAS[A-Z0-9\-]*|3AA[A-Z0-9\-]*|TEMP-[A-Z0-9\-]*|BRD-[A-Z0-9\-]*)\s+(.+?)\s+(?:China|Malaysia|Taiwan|Mexico|Vietnam|USA|Hong Kong|Singapore)\b",
-        r"(?:Description|Product\s*Description|Item\s*Description)\s*[:\-]?\s*([^\n]{10,200})",
-        r"(?:Goods\s*Description|Commodity)\s*[:\-]?\s*([^\n]{10,200})",
-        r"(?:Product|Item)\s*[:\-]?\s*([^\n]{10,200})",
+        # Explicit label — [^\S\n]* prevents crossing newlines - require separator
+        r"(?i)(?:Product[^\S\n]*Description|Item[^\S\n]*Description|Description[^\S\n]*of[^\S\n]*Goods|Goods[^\S\n]*Description|Commodity)[^\S\n]*[:\-][^\S\n]*([^\n]{10,200})",
+        # Tab-separated table: 2nd column (after part# tab)
+        r"^[A-Z][A-Z0-9\-_.]{2,30}\t([^\t\n]{5,200})\t",
+        # Single-space table: part# space Description space COUNTRY space value
+        # Use lookahead: description ends right before a known country word
+        r"^[A-Z][A-Z0-9\-]{2,30}\s+([A-Za-z][A-Za-z0-9 \-/,&]{3,120})(?=\s+(?:" + _COUNTRIES + r")\s+[\d])",
+        # Generic label fallback — must have colon separator
+        r"(?i)(?:Description|Product|Item)[^\S\n]*:[^\S\n]*([^\n]{10,200})",
     ],
     "country_of_origin": [
-        r"\b(?:VCAS[A-Z0-9\-]*|3AA[A-Z0-9\-]*|TEMP-[A-Z0-9\-]*|BRD-[A-Z0-9\-]*)\s+.+?\s+\b(China|Malaysia|Taiwan|Mexico|Vietnam|USA|Hong\s*Kong|Singapore)\b\s+\d{3,6}\b",
-        r"\b(China|Malaysia|Taiwan|Mexico|Vietnam|USA|Hong\s*Kong|Singapore)\b",
-        r"(?:Country\s*of\s*Origin|COO|Origin\s*Country)\s*[:\-]?\s*([A-Za-z\s]{3,50})",
-        r"(?:Made\s*in|Manufactured\s*in|Produced\s*in)\s*[:\-]?\s*([A-Za-z\s]{3,50})",
+        # Explicit label — [^\S\n]* prevents crossing newlines - require separator
+        r"(?i)(?:Country[^\S\n]*of[^\S\n]*Origin|COO|Origin[^\S\n]*Country)[^\S\n]*[:\-][^\S\n]*([A-Za-z][A-Za-z ]{2,30}?)(?:\n|$|,|\|)",
+        r"(?i)(?:Made[^\S\n]*in|Manufactured[^\S\n]*in|Produced[^\S\n]*in)[^\S\n]*[:\-][^\S\n]*([A-Za-z][A-Za-z ]{2,30})(?:\n|$|,)",
+        # Tab-separated table: 3rd column
+        r"^[A-Z][A-Z0-9\-_.]{2,30}\t[^\t\n]{5,200}\t(" + _COUNTRIES + r")(?:\t|\n|$)",
+        # Single-space table: country right before a numeric value (the declared value)
+        r"^[A-Z][A-Z0-9\-]{2,30}\s+[A-Za-z][A-Za-z0-9 \-/,&]{3,120}\s+(" + _COUNTRIES + r")\s+[\d]",
+        # Broad standalone country (last resort)
+        r"(?i)\b(" + _COUNTRIES + r")\b",
     ],
     "declared_value": [
-        r"\b(\d{4,6}\.\d{2})\b",
-        r"(?:Declared\s*Value|Invoice\s*Value|Total\s*Value|Unit\s*Value|Value)\s*[:\-]?\s*(?:USD|MYR|EUR|SGD|\$)?\s*([\d,]+\.?\d*)",
-        r"(?:Amount|Total\s*Amount)\s*[:\-]?\s*(?:USD|MYR|EUR|\$)?\s*([\d,]+\.?\d*)",
-        r"\$\s*([\d,]+\.?\d+)",
+        # Currency prefix e.g. $12,450.00
+        r"\$\s*([\d,]+\.\d{2})\b",
+        # Number followed by currency suffix e.g. "12,450.00 USD"
+        r"(?i)([\d,]+\.\d{2})\s*(?:USD|EUR|MYR|SGD|GBP|JPY)\b",
+        # Currency prefix without $ e.g. "USD 12,450.00"
+        r"(?i)(?:USD|EUR|MYR|SGD|GBP)\s+([\d,]+\.\d{2})\b",
+        # Single-space table: number at end of data row (after country)
+        r"(?i)(?:" + _COUNTRIES + r")\s+([\d,]+\.\d{2})\b",
+        # Explicit label
+        r"(?i)(?:Declared[^\S\n]*Value|Invoice[^\S\n]*Value|Total[^\S\n]*Value|Unit[^\S\n]*(?:Price|Value)|Value)[^\S\n]*[:\-][^\S\n]*(?:USD|MYR|EUR|SGD|GBP|JPY|\$|\u20ac|\u00a3)?[^\S\n]*([\d,]+\.?\d*)",
+        # Bare number like 12,450.00 or 12000.00
+        r"\b(\d{1,6},\d{3}\.\d{2})\b",
+        r"\b(\d{3,7}\.\d{2})\b",
     ],
     "shipment_id": [
-        r"(?:Shipment\s*(?:ID|Number|No\.?|#)\s*[:\-]?\s*)\b([A-Z0-9\-_]+)\b",
-        r"\b(JPN-\d{4})\b",
+        r"(?i)(?:Shipment\s*(?:ID|Number|No\.?|#))\s*[:\-]?\s*([A-Z]{2,6}[-][0-9]{3,8})",
+        r"\b([A-Z]{2,6}-\d{3,8})\b",  # e.g. DEU-8842
         r"\b(SHIP-\d{8}-\w+)\b",
     ],
     "material_type": [
-        r"(?:Material\s*Type|Material|Mat\s*Type)\s*[:\-]?\s*\b([A-Z]{3,6})\b",
-        r"\b(ZROH|HALB|FERT|ROH)\b",
+        r"(?i)(?:Material\s*Type|Material|Mat\.?\s*Type)\s*[:\-]?\s*\b([A-Z]{3,6})\b",
+        r"\b(ZROH|HALB|FERT|ROH|ZHAL|HAWA|NLAG)\b",
     ],
     "plant_code": [
-        r"(?:Plant\s*(?:Code|No\.?|#)?)\s*[:\-]?\s*\b([A-Z0-9]{3,6})\b",
-        r"\b(US\d{2}|HU\d{2}|SG\d{2})\b",
+        # Explicit label — any 2 letters + 2 digits: EU09, US02, SG01, HU10
+        r"(?i)(?:Plant\s*(?:Code|No\.?|#)?)\s*[:\-]?\s*\b([A-Z]{2}\d{2})\b",
     ],
     "supplier_name": [
-        r"(?:Supplier\s*(?:Name)?|Vendor\s*(?:Name)?|Sold\s*by)\s*[:\-]?\s*\b([A-Za-z0-9\.\-]+)\b",
-        r"\b(EMERSON|IBMRSS)\b",
+        # [^\S\n]* prevents crossing to next line
+        r"(?i)(?:Supplier[^\S\n]*(?:Name)?|Vendor[^\S\n]*(?:Name)?|Sold[^\S\n]*by|Manufacturer)[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 .\-&,]{1,60}?)(?:[^\S\n]{2,}|\n|$)",
+        r"\b(EMERSON|SIEMENS|IBMRSS|ABB|HONEYWELL|SCHNEIDER|ROCKWELL|BOSCH|PHILIPS|SAMSUNG|LG|SONY|PANASONIC)\b",
     ],
     "shipping_country": [
-        r"(?:Shipping\s*Country|Ship\s*From|Exported\s*From|Shipping\s*From)\s*[:\-]?\s*\b(Malaysia|Singapore|Hong\s*Kong|Taiwan|China|Mexico|Vietnam|USA)\b",
+        # Stop at next label keyword or end-of-line — do NOT use \s (crosses newlines)
+        # Pattern: label colon VALUE  where value is 1 word (country name)
+        r"(?i)(?:Shipping[^\S\n]*Country|Ship(?:ping)?[^\S\n]*From|Exported[^\S\n]*From|Country[^\S\n]*of[^\S\n]*Export)[^\S\n]*[:\-][^\S\n]*(" + _COUNTRIES + r")(?:[^\S\n]|\n|$|,)",
     ],
     "wto_member_status": [
-        r"(?:WTO\s*(?:Member)?\s*(?:Status)?)\s*[:\-]?\s*\b(Yes|No|Y|N)\b",
+        r"(?i)(?:WTO[^\S\n]*(?:Member)?[^\S\n]*(?:Status)?)[^\S\n]*[:\-][^\S\n]*\b(Yes|No|Y|N)\b",
     ],
     "fta_applicable": [
-        r"(?:FTA\s*Applicable|FTA|Free\s*Trade\s*Agreement)\s*[:\-]?\s*\b([A-Za-z0-9\-]{2,30})\b",
+        # Use [A-Za-z0-9 \-] NOT [\s] — \s includes \n which causes cross-line capture!
+        # e.g. correctly captures "EU-Japan EPA" or "ACFTA" or "No"
+        r"(?i)(?:FTA[^\S\n]*Applicable|FTA[^\S\n]*Name|Free[^\S\n]*Trade[^\S\n]*Agreement)[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
+        r"(?i)\bFTA[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
     ],
 }
 
 # Known country name normalizations
 COUNTRY_ALIASES = {
-    "MY": "Malaysia", "MYS": "Malaysia",
+    "MY": "Malaysia", "MYS": "Malaysia", "MALAYSIA": "Malaysia",
     "CN": "China", "CHN": "China", "PRC": "China", "CHINA": "China",
-    "US": "USA", "USA": "USA", "UNITED STATES": "USA",
-    "MX": "Mexico", "MEX": "Mexico",
-    "VN": "Vietnam", "VNM": "Vietnam",
-    "TH": "Thailand", "THA": "Thailand",
-    "SG": "Singapore", "SGP": "Singapore",
-    "IN": "India", "IND": "India",
-    "JP": "Japan", "JPN": "Japan",
-    "DE": "Germany", "DEU": "Germany",
-    "KR": "South Korea", "KOR": "South Korea",
-    "TW": "Taiwan", "TWN": "Taiwan",
+    "US": "USA", "USA": "USA", "UNITED STATES": "USA", "UNITED STATES OF AMERICA": "USA",
+    "MX": "Mexico", "MEX": "Mexico", "MEXICO": "Mexico",
+    "VN": "Vietnam", "VNM": "Vietnam", "VIETNAM": "Vietnam",
+    "TH": "Thailand", "THA": "Thailand", "THAILAND": "Thailand",
+    "SG": "Singapore", "SGP": "Singapore", "SINGAPORE": "Singapore",
+    "IN": "India", "IND": "India", "INDIA": "India",
+    "JP": "Japan", "JPN": "Japan", "JAPAN": "Japan",
+    "DE": "Germany", "DEU": "Germany", "GERMANY": "Germany",
+    "KR": "South Korea", "KOR": "South Korea", "SOUTH KOREA": "South Korea",
+    "TW": "Taiwan", "TWN": "Taiwan", "TAIWAN": "Taiwan",
+    "HK": "Hong Kong", "HKG": "Hong Kong", "HONG KONG": "Hong Kong",
+    "FR": "France", "FRA": "France", "FRANCE": "France",
+    "GB": "United Kingdom", "GBR": "United Kingdom", "UK": "United Kingdom", "UNITED KINGDOM": "United Kingdom",
+    "ID": "Indonesia", "IDN": "Indonesia", "INDONESIA": "Indonesia",
+    "PH": "Philippines", "PHL": "Philippines", "PHILIPPINES": "Philippines",
+    "BR": "Brazil", "BRA": "Brazil", "BRAZIL": "Brazil",
+    "NL": "Netherlands", "NLD": "Netherlands", "NETHERLANDS": "Netherlands",
+    "PL": "Poland", "POL": "Poland", "POLAND": "Poland",
+    "CZ": "Czech Republic", "CZE": "Czech Republic", "CZECH REPUBLIC": "Czech Republic",
+    "HU": "Hungary", "HUN": "Hungary", "HUNGARY": "Hungary",
+    "IT": "Italy", "ITA": "Italy", "ITALY": "Italy",
+    "ES": "Spain", "ESP": "Spain", "SPAIN": "Spain",
+    "AU": "Australia", "AUS": "Australia", "AUSTRALIA": "Australia",
+    "CA": "Canada", "CAN": "Canada", "CANADA": "Canada",
+    "TR": "Turkey", "TUR": "Turkey", "TURKEY": "Turkey",
+    "IL": "Israel", "ISR": "Israel", "ISRAEL": "Israel",
 }
 
 
@@ -124,6 +190,30 @@ def _clean_value(raw: str) -> float:
         return 0.0
 
 
+def _preprocess_text(text: str) -> str:
+    """
+    Clean raw extracted text before regex matching:
+    - Remove pure all-caps table header rows (no digits, 3+ words)
+    - Normalize whitespace within lines but preserve line breaks
+    """
+    cleaned_lines = []
+    # Pattern: line is pure header if all tokens are UPPER, no digits, 3+ words
+    header_pattern = re.compile(r'^[A-Z\s/#&]{10,}$')
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append("")
+            continue
+        # Skip lines that look like column headers (all caps, no digits, no colons)
+        if (header_pattern.match(stripped)
+                and not re.search(r'\d', stripped)
+                and ':' not in stripped
+                and len(stripped.split()) >= 3):
+            continue
+        cleaned_lines.append(line)
+    return "\n".join(cleaned_lines)
+
+
 def _extract_with_regex(text: str) -> dict:
     """Run regex patterns over extracted text to find trade fields."""
     result = {
@@ -140,14 +230,17 @@ def _extract_with_regex(text: str) -> dict:
         "fta_applicable": "",
     }
 
+    # Pre-process: strip table header rows to avoid false matches
+    clean_text = _preprocess_text(text)
+
     for field, patterns in PATTERNS.items():
         for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
+            match = re.search(pattern, clean_text, re.MULTILINE)
             if match:
-                raw = match.group(1).strip()
+                raw = match.group(1).strip().strip(".,;\n\r")
                 if field == "declared_value":
                     result[field] = _clean_value(raw)
-                elif field == "country_of_origin":
+                elif field in ("country_of_origin", "shipping_country"):
                     result[field] = _normalize_country(raw)
                 else:
                     result[field] = raw[:200]  # Limit length
@@ -167,14 +260,16 @@ def _extract_text_pdfplumber(pdf_path: str) -> str:
                 page_text = page.extract_text()
                 if page_text:
                     all_text.append(page_text)
-                # Also extract table data
+                # Extract tables with tab-separated columns for better regex matching
                 tables = page.extract_tables()
                 for table in (tables or []):
                     for row in table:
-                        row_text = " | ".join(
-                            str(cell) for cell in row if cell
+                        # Use tab to preserve column boundaries
+                        row_text = "\t".join(
+                            str(cell).strip() for cell in row if cell and str(cell).strip()
                         )
-                        all_text.append(row_text)
+                        if row_text:
+                            all_text.append(row_text)
         return "\n".join(all_text)
     except Exception as e:
         logger.error(f"pdfplumber extraction error: {e}")
@@ -182,18 +277,17 @@ def _extract_text_pdfplumber(pdf_path: str) -> str:
 
 
 def _extract_text_easyocr(pdf_path: str) -> str:
-    """Fallback: render PDF pages as images and run OCR."""
+    """Fallback: render PDF pages as images and run EasyOCR (lazy-loaded)."""
     if not HAS_EASYOCR:
         return ""
     try:
-        # Try importing pdf2image for rendering
         from pdf2image import convert_from_path  # type: ignore
         pages = convert_from_path(pdf_path, dpi=300)
+        ocr = _get_easyocr_reader()
         all_text = []
         for page_img in pages:
-            # Convert PIL Image to numpy array for EasyOCR
             img_np = np.array(page_img)
-            text_list = reader.readtext(img_np, detail=0)
+            text_list = ocr.readtext(img_np, detail=0)
             all_text.append("\n".join(text_list))
         return "\n".join(all_text)
     except ImportError:
