@@ -33,7 +33,14 @@ CREATE TABLE IF NOT EXISTS shipments (
     review_notes TEXT,
     source_pdf TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT
+    updated_at TEXT,
+    material_type TEXT DEFAULT 'ZROH',
+    plant_code TEXT DEFAULT 'US02',
+    supplier_name TEXT DEFAULT 'EMERSON',
+    shipping_country TEXT DEFAULT 'Malaysia',
+    wto_member_status TEXT DEFAULT 'Yes',
+    fta_applicable TEXT DEFAULT 'No',
+    target_sap_system TEXT DEFAULT 'Condition_Type_ZDUT'
 );
 
 -- Table 3: Audit Log

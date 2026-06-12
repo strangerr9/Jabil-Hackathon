@@ -11,12 +11,37 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTextEdit, QFrame, QProgressBar, QMessageBox, QTableWidget,
-    QTableWidgetItem, QHeaderView,
+    QTableWidgetItem, QHeaderView, QLineEdit,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QFont, QColor
 
 logger = logging.getLogger(__name__)
+
+
+class CustomCrawlerWorker(QThread):
+    """Background thread for crawling a user-input custom URL."""
+
+    log_message = Signal(str)
+    finished = Signal(dict)
+    error = Signal(str)
+
+    def __init__(self, url: str, origin: str):
+        super().__init__()
+        self.url = url
+        self.origin = origin
+
+    def run(self):
+        try:
+            from crawler.crawl4ai_service import crawl_custom_source_sync
+            result = crawl_custom_source_sync(
+                self.url,
+                self.origin,
+                log_callback=lambda msg: self.log_message.emit(msg)
+            )
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
 
 
 class CrawlerWorker(QThread):
@@ -114,6 +139,45 @@ class CrawlerPage(QWidget):
         self.progress_bar.setMaximumHeight(16)
         ctrl_layout.addWidget(self.progress_bar)
 
+        # Custom Crawl Input Layout
+        custom_crawl_lbl = QLabel("CRAWL CUSTOM TARIFF SOURCE (MITI / USITC / ETC.)")
+        custom_crawl_lbl.setStyleSheet(
+            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; margin-top: 10px;"
+        )
+        ctrl_layout.addWidget(custom_crawl_lbl)
+
+        custom_row = QHBoxLayout()
+        custom_row.setSpacing(10)
+
+        self.custom_url_input = QLineEdit()
+        self.custom_url_input.setPlaceholderText("Enter custom URL (e.g. https://fta.miti.gov.my/index.php/pages/view/asean-china or https://hts.usitc.gov)")
+        self.custom_url_input.setStyleSheet(
+            "QLineEdit { background-color: #030D1A; color: #FFFFFF; border: 1px solid #4A6FA5; "
+            "padding: 8px; border-radius: 4px; }"
+        )
+
+        self.custom_origin_input = QLineEdit()
+        self.custom_origin_input.setPlaceholderText("Origin (e.g. China)")
+        self.custom_origin_input.setMaximumWidth(150)
+        self.custom_origin_input.setStyleSheet(
+            "QLineEdit { background-color: #030D1A; color: #FFFFFF; border: 1px solid #4A6FA5; "
+            "padding: 8px; border-radius: 4px; }"
+        )
+
+        self.custom_crawl_btn = QPushButton("🔍 Crawl Custom Link")
+        self.custom_crawl_btn.setObjectName("btn_secondary")
+        self.custom_crawl_btn.setStyleSheet(
+            "QPushButton { background-color: #0057A8; color: #FFFFFF; font-weight: bold; padding: 8px 15px; border-radius: 4px; }"
+            "QPushButton:hover { background-color: #42A5F5; }"
+        )
+        self.custom_crawl_btn.setCursor(Qt.PointingHandCursor)
+        self.custom_crawl_btn.clicked.connect(self._run_custom_crawler)
+
+        custom_row.addWidget(self.custom_url_input)
+        custom_row.addWidget(self.custom_origin_input)
+        custom_row.addWidget(self.custom_crawl_btn)
+        ctrl_layout.addLayout(custom_row)
+
         # Buttons row
         btn_row = QHBoxLayout()
 
@@ -204,9 +268,20 @@ class CrawlerPage(QWidget):
         self.tariff_table.setMaximumHeight(280)
         layout.addWidget(self.tariff_table)
 
-    # ── Crawler Controls ───────────────────────────────────
     def _run_crawler(self):
         if self._crawler_worker and self._crawler_worker.isRunning():
+            return
+
+        from crawler.crawl4ai_service import HAS_CRAWL4AI
+        if not HAS_CRAWL4AI:
+            self._append_log("[System] ⚠️ crawl4ai is not installed.")
+            self._append_log("[System] Falling back to pre-loaded seed data (25 rules).")
+            QMessageBox.information(
+                self,
+                "Crawler Offline",
+                "crawl4ai is not installed.\n\n"
+                "The system is running in offline demo mode using the pre-loaded 25 seed tariff rules."
+            )
             return
 
         self._append_log("[System] Starting web crawler...")
@@ -267,8 +342,57 @@ class CrawlerPage(QWidget):
         self._append_log(f"[Error] ❌ {error}")
         QMessageBox.critical(self, "Crawler Error", error)
 
+    def _run_custom_crawler(self):
+        url = self.custom_url_input.text().strip()
+        origin = self.custom_origin_input.text().strip()
+        
+        if not url:
+            QMessageBox.warning(self, "Validation Error", "Please enter a valid website URL or PDF link to crawl.")
+            return
+            
+        if not origin:
+            QMessageBox.warning(self, "Validation Error", "Please enter the Country of Origin for the crawled tariff rules.")
+            return
+
+        from crawler.crawl4ai_service import HAS_CRAWL4AI
+        if not HAS_CRAWL4AI:
+            self._append_log(f"[System] ⚠️ crawl4ai not installed. Simulating custom crawl fallback for: {url}")
+            QMessageBox.warning(
+                self,
+                "Crawler Offline",
+                "crawl4ai is not installed.\n\n"
+                "The custom crawl cannot execute. Please install crawl4ai and Playwright."
+            )
+            return
+
+        self._append_log(f"[System] Starting custom crawler on: {url}...")
+        self.crawl_btn.setEnabled(False)
+        self.custom_crawl_btn.setEnabled(False)
+        self.index_btn.setEnabled(False)
+        self.progress_bar.setVisible(True)
+
+        self._custom_worker = CustomCrawlerWorker(url, origin)
+        self._custom_worker.log_message.connect(self._append_log)
+        self._custom_worker.finished.connect(self._on_custom_crawler_done)
+        self._custom_worker.error.connect(self._on_crawler_error)
+        self._custom_worker.start()
+
+    def _on_custom_crawler_done(self, result: dict):
+        self._reset_ui()
+        self._append_log(
+            f"[System] ✅ Custom crawl complete — "
+            f"Found: {result['rules_found']} | "
+            f"Saved: {result['rules_saved']}"
+        )
+        if result["errors"]:
+            for err in result["errors"]:
+                self._append_log(f"[Error] {err}")
+        self._load_tariff_table()
+
     def _reset_ui(self):
         self.crawl_btn.setEnabled(True)
+        if hasattr(self, "custom_crawl_btn"):
+            self.custom_crawl_btn.setEnabled(True)
         self.index_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         self.progress_bar.setVisible(False)

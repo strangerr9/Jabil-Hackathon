@@ -136,8 +136,20 @@ class RagIndexWorker(QThread):
 
     def run(self):
         try:
-            from rag.vector_store import get_vector_count, upsert_tariff_rules, get_collection
+            from rag.embeddings import HAS_SENTENCE_TRANSFORMERS
+            from rag.vector_store import HAS_CHROMADB, get_vector_count, upsert_tariff_rules
             from database.db import get_all_tariff_rules
+
+            if not HAS_SENTENCE_TRANSFORMERS or not HAS_CHROMADB:
+                missing = []
+                if not HAS_SENTENCE_TRANSFORMERS:
+                    missing.append("sentence-transformers")
+                if not HAS_CHROMADB:
+                    missing.append("chromadb")
+                msg = f"RAG offline (missing: {', '.join(missing)})"
+                self.status_update.emit(msg)
+                self.finished.emit(False, msg)
+                return
 
             self.status_update.emit("Connecting to vector store...")
             count = get_vector_count()

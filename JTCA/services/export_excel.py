@@ -54,22 +54,29 @@ def export_to_excel(
     # ── Build DataFrame ──────────────────────────────────────
     rows = []
     for s in shipments:
+        hscode = s.get("suggested_hs_code", "")
+        target_sap = s.get("target_sap_system", "")
+        if not target_sap:
+            target_sap = "Table_ZLANDED_COST" if hscode.startswith("9025") else "Condition_Type_ZDUT"
+
         rows.append({
             "Shipment_ID": s.get("shipment_id", ""),
-            "Part_Number": s.get("part_number", ""),
-            "HS_Code": s.get("suggested_hs_code", ""),
-            "Country_Of_Origin": s.get("country_of_origin", ""),
+            "Manufacturing_Part_Number": s.get("part_number", ""),
+            "Product_Description": s.get("product_description", ""),
+            "Material_Type": s.get("material_type", "ZROH"),
+            "Plant_Code": s.get("plant_code", "US02"),
+            "Supplier_Name": s.get("supplier_name", "EMERSON"),
+            "Country_of_Origin": s.get("country_of_origin", ""),
+            "Shipping_Country": s.get("shipping_country", "Malaysia"),
+            "WTO_Member_Status": s.get("wto_member_status", "Yes"),
+            "FTA_Applicable": s.get("fta_applicable", "No"),
+            "HTS_Code": hscode,
             "Declared_Value_USD": s.get("declared_value", 0.0),
-            "Tariff_Percent": s.get("tariff_percent", 0.0),
+            "Tariff_Rate_Percent": s.get("tariff_percent", 0.0),
             "Estimated_Duty_USD": s.get("estimated_duty", 0.0),
-            "Confidence_Score": s.get("confidence_score", 0.0),
+            "AI_Confidence": f"{s.get('confidence_score', 0.0):.0f}%",
+            "Target_SAP_System": target_sap,
             "Status": s.get("status", ""),
-            "Reviewer": s.get("reviewer_name", ""),
-            "Review_Notes": s.get("review_notes", ""),
-            "Created_At": s.get("created_at", ""),
-            "Condition_Type": "ZDUT",
-            "Table": "ZLANDED_COST",
-            "Target_SAP_System": "SAP S/4HANA",
         })
 
     df = pd.DataFrame(rows)

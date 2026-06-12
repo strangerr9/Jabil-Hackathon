@@ -15,6 +15,12 @@ from typing import Callable
 
 logger = logging.getLogger(__name__)
 
+try:
+    import crawl4ai
+    HAS_CRAWL4AI = True
+except ImportError:
+    HAS_CRAWL4AI = False
+
 
 # ─────────────────────────────────────────────
 # Target URLs for Crawling
@@ -97,6 +103,10 @@ async def _crawl_single_url(
         if log_callback:
             log_callback(msg)
 
+    if not HAS_CRAWL4AI:
+        log("[Crawler] crawl4ai not installed. Cannot crawl.")
+        return []
+
     try:
         from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
@@ -155,6 +165,15 @@ async def run_crawler_async(
         if log_callback:
             log_callback(msg)
 
+    if not HAS_CRAWL4AI:
+        log("[Crawler] crawl4ai not installed. Using seed data fallback.")
+        return {
+            "rules_found": 0,
+            "rules_saved": 0,
+            "sources_crawled": 0,
+            "errors": ["crawl4ai is not installed."],
+        }
+
     log("[Crawler] Starting crawl cycle...")
     all_rules = []
     errors = []
@@ -211,4 +230,86 @@ def run_crawler_sync(log_callback: Callable[[str], None] | None = None) -> dict:
         return result
     except Exception as e:
         logger.error(f"Crawler sync error: {e}")
+        return {"rules_found": 0, "rules_saved": 0, "sources_crawled": 0, "errors": [str(e)]}
+
+
+async def crawl_custom_source_async(
+    url: str,
+    origin: str,
+    log_callback: Callable[[str], None] | None = None,
+) -> dict:
+    """Crawl a custom source URL and update the SQLite/Chroma DB rule systems."""
+    from database.db import insert_tariff_rule
+    from rag.vector_store import upsert_tariff_rules, reset_collection
+    from database.db import get_all_tariff_rules
+
+    def log(msg):
+        logger.info(msg)
+        if log_callback:
+            log_callback(msg)
+
+    if not HAS_CRAWL4AI:
+        log("[Crawler] crawl4ai not installed. Cannot run custom crawl.")
+        return {
+            "rules_found": 0,
+            "rules_saved": 0,
+            "sources_crawled": 0,
+            "errors": ["crawl4ai is not installed."],
+        }
+
+    log(f"[Crawler] Starting custom crawl on: {url} (Origin: {origin})")
+    try:
+        rules = await _crawl_single_url(
+            url=url,
+            origin=origin,
+            log_callback=log_callback,
+        )
+    except Exception as e:
+        log(f"[Crawler] Custom crawl error: {e}")
+        return {
+            "rules_found": 0,
+            "rules_saved": 0,
+            "sources_crawled": 0,
+            "errors": [str(e)],
+        }
+
+    saved = 0
+    for rule in rules:
+        if insert_tariff_rule(rule):
+            saved += 1
+
+    log(f"[Crawler] Saved {saved} / {len(rules)} custom rules to database.")
+
+    if saved > 0:
+        log("[Crawler] Re-indexing vector store...")
+        try:
+            reset_collection()
+            all_db_rules = get_all_tariff_rules()
+            upsert_tariff_rules(all_db_rules)
+            log(f"[Crawler] Vector store updated with {len(all_db_rules)} rules.")
+        except Exception as e:
+            log(f"[Crawler] Vector store update failed: {e}")
+
+    return {
+        "rules_found": len(rules),
+        "rules_saved": saved,
+        "sources_crawled": 1,
+        "errors": [],
+    }
+
+
+def crawl_custom_source_sync(
+    url: str,
+    origin: str,
+    log_callback: Callable[[str], None] | None = None,
+) -> dict:
+    """Synchronous wrapper for custom crawler (for Qt threads)."""
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(crawl_custom_source_async(url, origin, log_callback))
+        loop.close()
+        return result
+    except Exception as e:
+        logger.error(f"Custom crawler sync error: {e}")
         return {"rules_found": 0, "rules_saved": 0, "sources_crawled": 0, "errors": [str(e)]}

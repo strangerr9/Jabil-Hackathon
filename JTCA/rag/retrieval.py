@@ -6,8 +6,8 @@ Queries ChromaDB for top-K similar tariff rules
 """
 
 import logging
-from rag.embeddings import encode_text, build_query_text
-from rag.vector_store import get_collection
+from rag.embeddings import HAS_SENTENCE_TRANSFORMERS, encode_text, build_query_text
+from rag.vector_store import HAS_CHROMADB, get_collection
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +28,14 @@ def query_similar(
     Returns:
         List of dicts with tariff rule metadata and similarity distance
     """
+    if not HAS_SENTENCE_TRANSFORMERS or not HAS_CHROMADB:
+        logger.warning("RAG skipped: sentence-transformers or chromadb not installed.")
+        return []
+
     try:
         collection = get_collection()
-        if collection.count() == 0:
-            logger.warning("Vector store is empty. Initialize with seed data first.")
+        if collection is None or collection.count() == 0:
+            logger.warning("Vector store is empty or unavailable. Initialize with seed data first.")
             return []
 
         query_text = build_query_text(product_description, origin_country)

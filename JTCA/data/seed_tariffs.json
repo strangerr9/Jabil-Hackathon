@@ -238,5 +238,15 @@
     "fta_name": "MFN Rate",
     "regulation_source": "https://hts.usitc.gov/",
     "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "851762",
+    "product_description": "Machines for the reception, conversion and transmission or regeneration of voice, images or other data, network switch, router",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
   }
 ]

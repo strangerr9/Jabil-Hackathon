@@ -47,7 +47,7 @@ def _get_genai():
 # Prompt Builder
 # ─────────────────────────────────────────────
 SYSTEM_PROMPT = """You are an expert trade compliance and customs classification specialist with 20 years of experience.
-Your task is to analyze product information and recommend the most accurate HS Code, tariff rate, and confidence score.
+Your task is to analyze product information and recommend the most accurate HS Code, tariff rate, and confidence score, as well as extract key trade fields.
 
 You MUST respond with ONLY a valid JSON object — no markdown, no explanation outside the JSON.
 
@@ -62,8 +62,14 @@ Response format:
     "Step 3: ...",
     "Step 4: ..."
   ],
-  "fta_applicable": "FTA name or None",
-  "regulation_source": "URL or reference"
+  "fta_applicable": "FTA name or None (e.g., ACFTA, CSFTA, Domestic, No)",
+  "regulation_source": "URL or reference",
+  "shipment_id": "JPN-XXXX",
+  "material_type": "ZROH / HALB / FERT / etc.",
+  "plant_code": "US02 / HU07 / etc.",
+  "supplier_name": "Supplier name",
+  "shipping_country": "Shipping country",
+  "wto_member_status": "Yes / No"
 }
 
 Rules:
@@ -72,6 +78,7 @@ Rules:
 - suggested_hs_code must be 6-digit string
 - reasoning_trace must be a list of 3-5 strings explaining your decision
 - If origin country has an FTA with the destination, note it in fta_applicable
+- If fields like shipment_id, material_type, plant_code, supplier_name, shipping_country, or wto_member_status are mentioned or can be inferred from the document description/text, extract them. Otherwise, default them sensibly based on standard Jabil trade practices (e.g., Material: ZROH, Plant: US02, Supplier: EMERSON, Shipping Country: Malaysia, WTO: Yes).
 """
 
 
@@ -127,6 +134,12 @@ def _parse_gemini_response(text: str) -> dict:
             "reasoning_trace": list(data.get("reasoning_trace", [])),
             "fta_applicable": str(data.get("fta_applicable", "None")),
             "regulation_source": str(data.get("regulation_source", "")),
+            "shipment_id": str(data.get("shipment_id", "")),
+            "material_type": str(data.get("material_type", "ZROH")),
+            "plant_code": str(data.get("plant_code", "US02")),
+            "supplier_name": str(data.get("supplier_name", "EMERSON")),
+            "shipping_country": str(data.get("shipping_country", "Malaysia")),
+            "wto_member_status": str(data.get("wto_member_status", "Yes")),
         }
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse Gemini JSON response: {e}")
@@ -146,6 +159,12 @@ def _fallback_response() -> dict:
         ],
         "fta_applicable": "Unknown",
         "regulation_source": "",
+        "shipment_id": "",
+        "material_type": "ZROH",
+        "plant_code": "US02",
+        "supplier_name": "EMERSON",
+        "shipping_country": "Malaysia",
+        "wto_member_status": "Yes",
     }
 
 
@@ -224,21 +243,31 @@ def _demo_response(description: str, origin: str) -> dict:
 
     # Simple keyword-based classification for demo
     if any(kw in desc_lower for kw in ["laptop", "notebook", "computer", "pc"]):
-        hs_code, tariff = "847130", 0.0
+        hs_code, tariff, material = "847130", 0.0, "ZROH"
     elif any(kw in desc_lower for kw in ["pcb", "printed circuit", "circuit board"]):
-        hs_code, tariff = ("847330", 25.0) if "china" in origin.lower() else ("847330", 0.0)
+        hs_code, tariff, material = ("847330", 25.0, "HALB") if "china" in origin.lower() else ("847330", 0.0, "HALB")
     elif any(kw in desc_lower for kw in ["processor", "cpu", "integrated circuit", "semiconductor"]):
-        hs_code, tariff = ("854231", 25.0) if "china" in origin.lower() else ("854231", 0.0)
+        hs_code, tariff, material = ("854231", 25.0, "ZROH") if "china" in origin.lower() else ("854231", 0.0, "ZROH")
     elif any(kw in desc_lower for kw in ["display", "lcd", "screen", "panel"]):
-        hs_code, tariff = "901380", 0.0
+        hs_code, tariff, material = "901380", 0.0, "FERT"
     elif any(kw in desc_lower for kw in ["battery", "accumulator"]):
-        hs_code, tariff = "850710", 27.5
+        hs_code, tariff, material = "850710", 27.5, "ZROH"
     elif any(kw in desc_lower for kw in ["power supply", "converter", "psu"]):
-        hs_code, tariff = "850440", 1.5
+        hs_code, tariff, material = "850440", 1.5, "ZROH"
+    elif any(kw in desc_lower for kw in ["suppresor", "voltage"]):
+        hs_code, tariff, material = "8533400000", 0.0, "ZROH"
+    elif any(kw in desc_lower for kw in ["sensor", "temperature"]):
+        hs_code, tariff, material = "902519", 0.0, "FERT"
     else:
-        hs_code, tariff = "847190", 0.0
+        hs_code, tariff, material = "847190", 0.0, "ZROH"
 
     confidence = 88 if origin.lower() in ["malaysia", "mexico", "usa"] else 75
+
+    # Match supplier and plant code based on product description keyword
+    supplier = "EMERSON" if "sensor" in desc_lower or "suppresor" in desc_lower else "IBMRSS"
+    plant = "HU07" if "sensor" in desc_lower or "monitor" in desc_lower else ("SG23" if "pcb" in desc_lower or "circuit" in desc_lower else "US02")
+
+    ship_id = "JPN-1005" if "suppresor" in desc_lower else ("JPN-1007" if "monitor" in desc_lower else ("JPN-1001" if "sensor" in desc_lower else "JPN-1002"))
 
     return {
         "suggested_hs_code": hs_code,
@@ -251,6 +280,12 @@ def _demo_response(description: str, origin: str) -> dict:
             f"Applicable tariff rate: {tariff}% based on origin-destination trade rules",
             "Demo mode — connect Gemini API key for full AI reasoning",
         ],
-        "fta_applicable": "ITA Agreement" if tariff == 0.0 else "Section 301",
+        "fta_applicable": "ACFTA" if "suppresor" in desc_lower else ("CSFTA" if "sensor" in desc_lower else ("Domestic" if "pcb" in desc_lower else "No")),
         "regulation_source": "https://hts.usitc.gov/",
+        "shipment_id": ship_id,
+        "material_type": material,
+        "plant_code": plant,
+        "supplier_name": supplier,
+        "shipping_country": "Malaysia" if origin.lower() != "taiwan" else "Hong Kong",
+        "wto_member_status": "Yes",
     }

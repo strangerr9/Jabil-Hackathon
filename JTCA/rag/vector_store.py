@@ -21,19 +21,24 @@ COLLECTION_NAME = "jtca_tariff_rules"
 _client = None
 _collection = None
 
+try:
+    import chromadb
+    HAS_CHROMADB = True
+except ImportError:
+    HAS_CHROMADB = False
+    logger.warning("chromadb not installed. Vector store operations will be bypassed.")
+
 
 def _get_client():
     """Lazy-initialize ChromaDB persistent client."""
     global _client
+    if not HAS_CHROMADB:
+        return None
     if _client is None:
         try:
-            import chromadb
             Path(CHROMA_PATH).mkdir(parents=True, exist_ok=True)
             _client = chromadb.PersistentClient(path=CHROMA_PATH)
             logger.info(f"ChromaDB client initialized at: {CHROMA_PATH}")
-        except ImportError:
-            logger.error("chromadb not installed.")
-            raise
         except Exception as e:
             logger.error(f"ChromaDB init error: {e}")
             raise
@@ -43,13 +48,16 @@ def _get_client():
 def get_collection():
     """Get or create the tariff rules collection."""
     global _collection
+    if not HAS_CHROMADB:
+        return None
     if _collection is None:
         client = _get_client()
-        _collection = client.get_or_create_collection(
-            name=COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
-        )
-        logger.info(f"Collection '{COLLECTION_NAME}' ready. Count: {_collection.count()}")
+        if client:
+            _collection = client.get_or_create_collection(
+                name=COLLECTION_NAME,
+                metadata={"hnsw:space": "cosine"},
+            )
+            logger.info(f"Collection '{COLLECTION_NAME}' ready. Count: {_collection.count()}")
     return _collection
 
 
@@ -60,13 +68,24 @@ def upsert_tariff_rules(rules: list[dict]):
     Args:
         rules: List of tariff rule dicts from database
     """
+    if not HAS_CHROMADB:
+        logger.warning("ChromaDB not available. Skipping upsert.")
+        return
+
+    from rag.embeddings import HAS_SENTENCE_TRANSFORMERS, encode_batch, build_query_text
+
+    if not HAS_SENTENCE_TRANSFORMERS:
+        logger.warning("Sentence-transformers not available. Skipping upsert.")
+        return
+
     if not rules:
         logger.warning("No rules to upsert.")
         return
 
-    from rag.embeddings import encode_batch, build_query_text
-
     collection = get_collection()
+    if not collection:
+        logger.warning("Collection not available. Skipping upsert.")
+        return
 
     documents = []
     embeddings = []
@@ -108,8 +127,11 @@ def upsert_tariff_rules(rules: list[dict]):
 
 def get_vector_count() -> int:
     """Return the number of documents in the vector store."""
+    if not HAS_CHROMADB:
+        return 0
     try:
-        return get_collection().count()
+        col = get_collection()
+        return col.count() if col else 0
     except Exception:
         return 0
 
@@ -117,11 +139,15 @@ def get_vector_count() -> int:
 def reset_collection():
     """Delete and recreate the collection (useful for re-indexing)."""
     global _collection
+    if not HAS_CHROMADB:
+        logger.warning("ChromaDB not available. Skipping reset.")
+        return
     try:
         client = _get_client()
-        client.delete_collection(COLLECTION_NAME)
-        _collection = None
-        get_collection()  # Recreate
-        logger.info("Collection reset.")
+        if client:
+            client.delete_collection(COLLECTION_NAME)
+            _collection = None
+            get_collection()  # Recreate
+            logger.info("Collection reset.")
     except Exception as e:
         logger.error(f"Failed to reset collection: {e}")

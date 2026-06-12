@@ -15,19 +15,24 @@ logger = logging.getLogger(__name__)
 MODEL_NAME = "all-MiniLM-L6-v2"
 _model = None  # Singleton model instance
 
+try:
+    from sentence_transformers import SentenceTransformer
+    HAS_SENTENCE_TRANSFORMERS = True
+except ImportError:
+    HAS_SENTENCE_TRANSFORMERS = False
+    logger.warning("sentence-transformers not installed. RAG embeddings fallback will be used.")
+
 
 def get_model():
     """Lazy-load SentenceTransformer model (singleton)."""
     global _model
+    if not HAS_SENTENCE_TRANSFORMERS:
+        return None
     if _model is None:
         try:
-            from sentence_transformers import SentenceTransformer
             logger.info(f"Loading SentenceTransformer model: {MODEL_NAME}")
             _model = SentenceTransformer(MODEL_NAME)
             logger.info("Model loaded successfully.")
-        except ImportError:
-            logger.error("sentence-transformers not installed. RAG unavailable.")
-            raise
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
             raise
@@ -45,6 +50,8 @@ def encode_text(text: str) -> list[float]:
         List of floats representing the embedding vector
     """
     model = get_model()
+    if model is None:
+        return []
     embedding = model.encode(text, normalize_embeddings=True)
     return embedding.tolist()
 
@@ -60,6 +67,8 @@ def encode_batch(texts: list[str]) -> list[list[float]]:
         List of embedding vectors
     """
     model = get_model()
+    if model is None:
+        return [[] for _ in texts]
     embeddings = model.encode(texts, normalize_embeddings=True, batch_size=32)
     return embeddings.tolist()
 

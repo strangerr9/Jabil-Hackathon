@@ -202,20 +202,37 @@ class ProcessingWorker(QThread):
 
             # Step 6: Persist
             self.progress.emit("💾 Saving to database...")
-            shipment_id = f"SHIP-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{str(uuid.uuid4())[:4].upper()}"
+            import re
+            
+            # Determine shipment ID: check OCR or AI extraction first, fallback to generated
+            shipment_id = ocr_data.get("shipment_id", "").strip() or ai_result.get("shipment_id", "").strip()
+            if not shipment_id or not re.match(r"^[A-Z0-9\-_]+$", shipment_id):
+                shipment_id = f"SHIP-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{str(uuid.uuid4())[:4].upper()}"
+
+            # Dynamically determine Target SAP System / Table based on HTS Code prefix (9025 Temperature sensors map to Table_ZLANDED_COST, others to Condition_Type_ZDUT)
+            suggested_hs = ai_result.get("suggested_hs_code", "")
+            target_sap = "Table_ZLANDED_COST" if suggested_hs.startswith("9025") else "Condition_Type_ZDUT"
+
             shipment_data = {
                 "shipment_id": shipment_id,
-                "part_number": ocr_data.get("part_number", ""),
+                "part_number": ocr_data.get("part_number", "") or ai_result.get("manufacturing_part_number", ""),
                 "product_description": ocr_data["product_description"],
-                "country_of_origin": ocr_data.get("country_of_origin", "Unknown"),
+                "country_of_origin": ocr_data.get("country_of_origin", "") or ai_result.get("country_of_origin", "Unknown"),
                 "declared_value": ocr_data.get("declared_value", 0.0),
-                "suggested_hs_code": ai_result.get("suggested_hs_code", ""),
+                "suggested_hs_code": suggested_hs,
                 "tariff_percent": ai_result.get("suggested_tariff_percent", 0.0),
                 "estimated_duty": duty,
                 "confidence_score": ai_result.get("confidence_score", 0),
                 "reasoning_trace": ai_result.get("reasoning_trace", []),
                 "status": status,
                 "source_pdf": str(self.pdf_path),
+                "material_type": ocr_data.get("material_type", "") or ai_result.get("material_type", "ZROH"),
+                "plant_code": ocr_data.get("plant_code", "") or ai_result.get("plant_code", "US02"),
+                "supplier_name": ocr_data.get("supplier_name", "") or ai_result.get("supplier_name", "EMERSON"),
+                "shipping_country": ocr_data.get("shipping_country", "") or ai_result.get("shipping_country", "Malaysia"),
+                "wto_member_status": ocr_data.get("wto_member_status", "") or ai_result.get("wto_member_status", "Yes"),
+                "fta_applicable": ai_result.get("fta_applicable", "") or ocr_data.get("fta_applicable", "No"),
+                "target_sap_system": target_sap,
             }
             insert_shipment(shipment_data)
 

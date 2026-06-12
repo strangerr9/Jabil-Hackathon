@@ -37,6 +37,31 @@ def get_connection() -> sqlite3.Connection:
 # ─────────────────────────────────────────────
 # Schema Initialization
 # ─────────────────────────────────────────────
+def _migrate_db(conn: sqlite3.Connection):
+    """Run migrations to add new columns to shipments table if missing."""
+    new_cols = [
+        ("material_type", "TEXT DEFAULT 'ZROH'"),
+        ("plant_code", "TEXT DEFAULT 'US02'"),
+        ("supplier_name", "TEXT DEFAULT 'EMERSON'"),
+        ("shipping_country", "TEXT DEFAULT 'Malaysia'"),
+        ("wto_member_status", "TEXT DEFAULT 'Yes'"),
+        ("fta_applicable", "TEXT DEFAULT 'No'"),
+        ("target_sap_system", "TEXT DEFAULT 'Condition_Type_ZDUT'")
+    ]
+    
+    # Get existing columns in shipments table
+    cursor = conn.execute("PRAGMA table_info(shipments)")
+    existing_cols = {row["name"] for row in cursor.fetchall()}
+    
+    for col_name, col_type in new_cols:
+        if col_name not in existing_cols:
+            try:
+                conn.execute(f"ALTER TABLE shipments ADD COLUMN {col_name} {col_type}")
+                logger.info(f"Database migrated: Added column '{col_name}' to shipments table.")
+            except Exception as e:
+                logger.error(f"Failed to add column '{col_name}': {e}")
+
+
 def initialize_db():
     """Create tables and seed initial tariff data if empty."""
     conn = get_connection()
@@ -45,6 +70,8 @@ def initialize_db():
             conn.executescript(f.read())
         conn.commit()
         logger.info("Database schema initialized.")
+        _migrate_db(conn)
+        conn.commit()
         _seed_tariff_data(conn)
     except Exception as e:
         logger.error(f"DB initialization error: {e}")
@@ -54,12 +81,9 @@ def initialize_db():
 
 
 def _seed_tariff_data(conn: sqlite3.Connection):
-    """Load seed tariff rules from JSON if tariff_rules table is empty."""
+    """Load seed tariff rules from JSON if tariff_rules table is empty or out of date."""
     cur = conn.execute("SELECT COUNT(*) FROM tariff_rules")
     count = cur.fetchone()[0]
-    if count > 0:
-        logger.info(f"Tariff rules already seeded ({count} records). Skipping.")
-        return
 
     if not SEED_PATH.exists():
         logger.warning("Seed data file not found. Skipping seed.")
@@ -68,11 +92,19 @@ def _seed_tariff_data(conn: sqlite3.Connection):
     with open(SEED_PATH, "r") as f:
         rules = json.load(f)
 
+    if count >= len(rules):
+        logger.info(f"Tariff rules already seeded ({count} records). Skipping.")
+        return
+
+    if count > 0:
+        logger.info(f"Current database rules ({count}) is less than seed count ({len(rules)}). Re-seeding...")
+        conn.execute("DELETE FROM tariff_rules")
+
     now = datetime.now().isoformat()
     for rule in rules:
         conn.execute(
             """
-            INSERT INTO tariff_rules
+            INSERT OR REPLACE INTO tariff_rules
               (hs_code, product_description, origin_country, destination_country,
                tariff_percent, fta_name, regulation_source, last_updated)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -102,11 +134,13 @@ def insert_shipment(data: dict) -> bool:
         now = datetime.now().isoformat()
         conn.execute(
             """
-            INSERT INTO shipments
+            INSERT OR REPLACE INTO shipments
               (shipment_id, part_number, product_description, country_of_origin,
                declared_value, suggested_hs_code, tariff_percent, estimated_duty,
-               confidence_score, reasoning_trace, status, source_pdf, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               confidence_score, reasoning_trace, status, source_pdf, created_at, updated_at,
+               material_type, plant_code, supplier_name, shipping_country,
+               wto_member_status, fta_applicable, target_sap_system)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data["shipment_id"],
@@ -123,6 +157,13 @@ def insert_shipment(data: dict) -> bool:
                 data.get("source_pdf", ""),
                 now,
                 now,
+                data.get("material_type", "ZROH"),
+                data.get("plant_code", "US02"),
+                data.get("supplier_name", "EMERSON"),
+                data.get("shipping_country", "Malaysia"),
+                data.get("wto_member_status", "Yes"),
+                data.get("fta_applicable", "No"),
+                data.get("target_sap_system", "Condition_Type_ZDUT"),
             ),
         )
         conn.commit()

@@ -208,19 +208,40 @@ class ShipmentViewPage(QWidget):
         info_grid.setSpacing(20)
         info_grid.setContentsMargins(20, 16, 20, 16)
 
-        self.f_part_number = InfoField("Part Number")
+        self.f_part_number = InfoField("Manufacturing Part Number")
         self.f_description = InfoField("Product Description")
         self.f_origin = InfoField("Country of Origin")
-        self.f_declared_value = InfoField("Declared Value")
+        self.f_declared_value = InfoField("Declared Value (USD)")
         self.f_shipment_id = InfoField("Shipment ID", mono=True)
         self.f_created = InfoField("Created At")
+        self.f_material_type = InfoField("Material Type")
+        self.f_plant_code = InfoField("Plant Code")
+        self.f_supplier_name = InfoField("Supplier Name")
+        self.f_shipping_country = InfoField("Shipping Country")
+        self.f_wto_member_status = InfoField("WTO Member Status")
+        self.f_fta_applicable = InfoField("FTA Applicable")
 
+        # Row 0
         info_grid.addWidget(self.f_shipment_id, 0, 0)
         info_grid.addWidget(self.f_part_number, 0, 1)
         info_grid.addWidget(self.f_created, 0, 2)
+        
+        # Row 1
         info_grid.addWidget(self.f_description, 1, 0, 1, 2)
         info_grid.addWidget(self.f_origin, 1, 2)
-        info_grid.addWidget(self.f_declared_value, 2, 0)
+        
+        # Row 2
+        info_grid.addWidget(self.f_material_type, 2, 0)
+        info_grid.addWidget(self.f_plant_code, 2, 1)
+        info_grid.addWidget(self.f_supplier_name, 2, 2)
+        
+        # Row 3
+        info_grid.addWidget(self.f_shipping_country, 3, 0)
+        info_grid.addWidget(self.f_wto_member_status, 3, 1)
+        info_grid.addWidget(self.f_fta_applicable, 3, 2)
+        
+        # Row 4
+        info_grid.addWidget(self.f_declared_value, 4, 0)
 
         layout.addWidget(info_card)
 
@@ -347,6 +368,12 @@ class ShipmentViewPage(QWidget):
         self.f_created.set_value(
             shipment.get("created_at", "")[:19].replace("T", " ")
         )
+        self.f_material_type.set_value(shipment.get("material_type", "ZROH"))
+        self.f_plant_code.set_value(shipment.get("plant_code", "US02"))
+        self.f_supplier_name.set_value(shipment.get("supplier_name", "EMERSON"))
+        self.f_shipping_country.set_value(shipment.get("shipping_country", "Malaysia"))
+        self.f_wto_member_status.set_value(shipment.get("wto_member_status", "Yes"))
+        self.f_fta_applicable.set_value(shipment.get("fta_applicable", "No"))
 
         # Status badge
         status = shipment.get("status", "Pending Review")

@@ -100,10 +100,11 @@ class ShipmentsListPage(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(11)
         self.table.setHorizontalHeaderLabels([
             "No.", "Shipment ID", "Part No.", "Description",
-            "Origin", "HS Code", "Confidence", "Status",
+            "Supplier", "Origin", "HS Code", "Value (USD)", 
+            "Tariff %", "Confidence", "Status",
         ])
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -162,11 +163,14 @@ class ShipmentsListPage(QWidget):
 
             row_data = [
                 str(row_idx + 1),
-                s.get("shipment_id", "")[-14:],
+                s.get("shipment_id", ""),
                 s.get("part_number", "") or "—",
                 s.get("product_description", "")[:55],
+                s.get("supplier_name", "EMERSON"),
                 s.get("country_of_origin", ""),
                 s.get("suggested_hs_code", ""),
+                f"${s.get('declared_value', 0.0):,.2f}",
+                f"{s.get('tariff_percent', 0.0):.2f}%",
                 f"{confidence:.0f}%",
                 status,
             ]
@@ -175,7 +179,7 @@ class ShipmentsListPage(QWidget):
                 item = QTableWidgetItem(value)
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
 
-                if col_idx == 6:
+                if col_idx == 9:
                     color = (
                         "#10B981" if confidence >= 90 else
                         "#F59E0B" if confidence >= 70 else
@@ -183,7 +187,7 @@ class ShipmentsListPage(QWidget):
                     )
                     item.setForeground(QColor(color))
 
-                if col_idx == 7:
+                if col_idx == 10:
                     color_map = {
                         "Approved": "#10B981",
                         "Pending Review": "#F59E0B",
