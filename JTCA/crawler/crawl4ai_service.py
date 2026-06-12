@@ -1,0 +1,214 @@
+"""
+============================================================
+JTCA - Crawler Service (Crawl4AI)
+Scrapes trade agreement portals and populates tariff_rules
+Supports: MITI FTA Portal, WTO, ASEAN Trade Repository
+============================================================
+"""
+
+import asyncio
+import logging
+import re
+import json
+from datetime import datetime
+from typing import Callable
+
+logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────
+# Target URLs for Crawling
+# ─────────────────────────────────────────────
+CRAWL_TARGETS = [
+    {
+        "name": "MITI Malaysia FTA",
+        "url": "https://www.miti.gov.my/index.php/pages/view/ftas",
+        "origin": "Malaysia",
+    },
+    {
+        "name": "WTO Tariff Download",
+        "url": "https://www.wto.org/english/tratop_e/tariffs_e/tariff_data_e.htm",
+        "origin": "General",
+    },
+    {
+        "name": "ASEAN Trade Repository",
+        "url": "https://atr.asean.org/",
+        "origin": "ASEAN",
+    },
+]
+
+
+# ─────────────────────────────────────────────
+# HS Code / Tariff Rate Parsers
+# ─────────────────────────────────────────────
+def _parse_hs_codes_from_text(text: str, source_url: str, origin: str) -> list[dict]:
+    """
+    Extract HS codes and tariff percentages from crawled HTML text.
+    Uses regex to find common patterns.
+    """
+    rules = []
+    now = datetime.now().isoformat()
+
+    # Pattern: HS code (6-10 digits) followed by product text and percentage
+    hs_pattern = re.compile(
+        r"\b(\d{4}[\.\s]?\d{2}[\.\s]?\d{0,4})\b"
+        r"(.{5,150}?)"
+        r"(\d{1,2}(?:\.\d{1,2})?)\s*%",
+        re.DOTALL,
+    )
+
+    for match in hs_pattern.finditer(text):
+        raw_hs = re.sub(r"[\s\.]", "", match.group(1))
+        if len(raw_hs) < 6:
+            continue
+
+        hs_code = raw_hs[:6]  # Normalize to 6 digits
+        description = match.group(2).strip()[:200]
+        tariff_percent = float(match.group(3))
+
+        if tariff_percent > 100 or tariff_percent < 0:
+            continue
+
+        rules.append({
+            "hs_code": hs_code,
+            "product_description": description,
+            "origin_country": origin,
+            "destination_country": "USA",
+            "tariff_percent": tariff_percent,
+            "fta_name": "Web Crawl",
+            "regulation_source": source_url,
+            "last_updated": now,
+        })
+
+    return rules
+
+
+# ─────────────────────────────────────────────
+# Async Crawler
+# ─────────────────────────────────────────────
+async def _crawl_single_url(
+    url: str,
+    origin: str,
+    log_callback: Callable[[str], None] | None = None,
+) -> list[dict]:
+    """Crawl a single URL and extract tariff rules."""
+    def log(msg):
+        logger.info(msg)
+        if log_callback:
+            log_callback(msg)
+
+    try:
+        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
+
+        log(f"[Crawler] Fetching: {url}")
+
+        browser_config = BrowserConfig(headless=True, verbose=False)
+        run_config = CrawlerRunConfig(
+            word_count_threshold=10,
+            excluded_tags=["nav", "footer", "header", "script", "style"],
+            remove_overlay_elements=True,
+        )
+
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            result = await crawler.arun(url=url, config=run_config)
+
+            if not result.success:
+                log(f"[Crawler] Failed to fetch: {url}")
+                return []
+
+            text = result.markdown or result.cleaned_html or ""
+            rules = _parse_hs_codes_from_text(text, url, origin)
+            log(f"[Crawler] Extracted {len(rules)} rules from {url}")
+            return rules
+
+    except ImportError:
+        log("[Crawler] crawl4ai not installed. Please run: pip install crawl4ai")
+        return []
+    except Exception as e:
+        log(f"[Crawler] Error crawling {url}: {e}")
+        return []
+
+
+async def run_crawler_async(
+    log_callback: Callable[[str], None] | None = None,
+) -> dict:
+    """
+    Run full crawl cycle across all configured targets.
+
+    Args:
+        log_callback: Optional function to receive real-time log messages
+
+    Returns:
+        {
+            "rules_found": int,
+            "rules_saved": int,
+            "sources_crawled": int,
+            "errors": list[str]
+        }
+    """
+    from database.db import insert_tariff_rule
+    from rag.vector_store import upsert_tariff_rules, reset_collection
+    from database.db import get_all_tariff_rules
+
+    def log(msg):
+        logger.info(msg)
+        if log_callback:
+            log_callback(msg)
+
+    log("[Crawler] Starting crawl cycle...")
+    all_rules = []
+    errors = []
+
+    for target in CRAWL_TARGETS:
+        log(f"[Crawler] Target: {target['name']} ({target['url']})")
+        try:
+            rules = await _crawl_single_url(
+                url=target["url"],
+                origin=target["origin"],
+                log_callback=log_callback,
+            )
+            all_rules.extend(rules)
+        except Exception as e:
+            err = f"Error on {target['name']}: {e}"
+            errors.append(err)
+            log(f"[Crawler] {err}")
+
+    # Insert new rules into SQLite
+    saved = 0
+    for rule in all_rules:
+        if insert_tariff_rule(rule):
+            saved += 1
+
+    log(f"[Crawler] Saved {saved} / {len(all_rules)} rules to database.")
+
+    # Refresh vector store
+    if saved > 0:
+        log("[Crawler] Re-indexing vector store...")
+        try:
+            reset_collection()
+            all_db_rules = get_all_tariff_rules()
+            upsert_tariff_rules(all_db_rules)
+            log(f"[Crawler] Vector store updated with {len(all_db_rules)} rules.")
+        except Exception as e:
+            log(f"[Crawler] Vector store update failed: {e}")
+
+    log("[Crawler] Crawl cycle complete.")
+    return {
+        "rules_found": len(all_rules),
+        "rules_saved": saved,
+        "sources_crawled": len(CRAWL_TARGETS),
+        "errors": errors,
+    }
+
+
+def run_crawler_sync(log_callback: Callable[[str], None] | None = None) -> dict:
+    """Synchronous wrapper for async crawler (for use in Qt threads)."""
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(run_crawler_async(log_callback))
+        loop.close()
+        return result
+    except Exception as e:
+        logger.error(f"Crawler sync error: {e}")
+        return {"rules_found": 0, "rules_saved": 0, "sources_crawled": 0, "errors": [str(e)]}

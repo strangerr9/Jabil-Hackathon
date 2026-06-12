@@ -1,0 +1,41 @@
+# ============================================================
+# JTCA - Jabil TradeAI Compliance Assistant
+# Requirements File
+# ============================================================
+
+# --- UI Framework ---
+PySide6>=6.7.0
+
+# --- PDF / OCR ---
+pdfplumber>=0.11.0
+pytesseract>=0.3.10
+Pillow>=10.3.0
+
+# --- Web Crawling ---
+crawl4ai>=0.3.7
+playwright>=1.44.0
+
+# --- RAG / Vector DB ---
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+
+# --- LLM ---
+google-generativeai>=0.7.0
+
+# --- Database ---
+# SQLite is built into Python stdlib
+
+# --- Data Processing / Export ---
+pandas>=2.2.0
+openpyxl>=3.1.2
+
+# --- Environment & Utilities ---
+python-dotenv>=1.0.1
+requests>=2.32.0
+httpx>=0.27.0
+
+# --- Async ---
+asyncio-throttle>=1.0.2
+
+# --- Logging ---
+# logging is built into Python stdlib

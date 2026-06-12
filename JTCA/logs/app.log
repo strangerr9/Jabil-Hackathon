@@ -1,0 +1,274 @@
+2026-06-12 12:56:39 [INFO] JTCA: ============================================================
+2026-06-12 12:56:39 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 12:56:39 [INFO] JTCA: Starting application...
+2026-06-12 12:56:39 [INFO] JTCA: ============================================================
+2026-06-12 12:56:40 [INFO] JTCA: Initializing database...
+2026-06-12 12:56:41 [INFO] database.db: Database schema initialized.
+2026-06-12 12:56:41 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 12:56:41 [INFO] JTCA: Loading RAG knowledge base...
+2026-06-12 12:56:41 [ERROR] rag.vector_store: chromadb not installed.
+2026-06-12 12:56:41 [INFO] JTCA: Indexing tariff rules into vector store...
+2026-06-12 12:56:41 [ERROR] rag.vector_store: chromadb not installed.
+2026-06-12 12:56:41 [WARNING] JTCA: RAG init skipped (install dependencies): No module named 'chromadb'
+2026-06-12 12:56:41 [INFO] JTCA: RAG unavailable — will use Gemini fallback.
+2026-06-12 12:56:41 [INFO] JTCA: Starting UI...
+2026-06-12 12:56:44 [INFO] JTCA: Application UI launched.
+2026-06-12 13:00:14 [INFO] JTCA: ============================================================
+2026-06-12 13:00:14 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:00:14 [INFO] JTCA: Starting application...
+2026-06-12 13:00:14 [INFO] JTCA: ============================================================
+2026-06-12 13:00:16 [INFO] JTCA: Initializing database...
+2026-06-12 13:00:16 [INFO] database.db: Database schema initialized.
+2026-06-12 13:00:16 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:00:16 [INFO] JTCA: Loading RAG knowledge base...
+2026-06-12 13:00:25 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:00:25 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 0
+2026-06-12 13:00:25 [INFO] JTCA: Indexing tariff rules into vector store...
+2026-06-12 13:06:21 [INFO] JTCA: ============================================================
+2026-06-12 13:06:21 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:06:21 [INFO] JTCA: Starting application...
+2026-06-12 13:06:21 [INFO] JTCA: ============================================================
+2026-06-12 13:06:22 [INFO] JTCA: Initializing database...
+2026-06-12 13:06:22 [INFO] database.db: Database schema initialized.
+2026-06-12 13:06:22 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:06:22 [INFO] JTCA: Database ready. Loading UI...
+2026-06-12 13:06:25 [INFO] JTCA: Application UI launched.
+2026-06-12 13:06:25 [INFO] JTCA: [RAG] Connecting to vector store...
+2026-06-12 13:06:28 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:06:28 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 0
+2026-06-12 13:06:28 [INFO] JTCA: [RAG] Downloading AI embedding model (first run)...
+2026-06-12 13:06:28 [INFO] JTCA: [RAG] Indexing 24 tariff rules...
+2026-06-12 13:10:10 [INFO] JTCA: ============================================================
+2026-06-12 13:10:10 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:10:10 [INFO] JTCA: Starting application...
+2026-06-12 13:10:10 [INFO] JTCA: ============================================================
+2026-06-12 13:10:12 [INFO] JTCA: Initializing database...
+2026-06-12 13:10:12 [INFO] database.db: Database schema initialized.
+2026-06-12 13:10:12 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:10:12 [INFO] JTCA: Database ready. Loading UI...
+2026-06-12 13:10:15 [INFO] JTCA: Application UI launched.
+2026-06-12 13:10:15 [INFO] JTCA: [RAG] Connecting to vector store...
+2026-06-12 13:10:17 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:10:17 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 0
+2026-06-12 13:10:17 [INFO] JTCA: [RAG] Downloading AI embedding model (first run)...
+2026-06-12 13:10:17 [INFO] JTCA: [RAG] Indexing 24 tariff rules...
+2026-06-12 13:10:27 [INFO] rag.embeddings: Loading SentenceTransformer model: all-MiniLM-L6-v2
+2026-06-12 13:10:27 [INFO] sentence_transformers.base.model: No device provided, using cuda:0
+2026-06-12 13:10:28 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/agent-harnesses "HTTP/1.1 200 OK"
+2026-06-12 13:10:28 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:10:28 [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-06-12 13:10:28 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:28 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:28 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:10:28 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:29 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:29 [INFO] sentence_transformers.base.model: Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-06-12 13:10:29 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:10:29 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:29 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:10:29 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md "HTTP/1.1 200 OK"
+2026-06-12 13:10:29 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md "HTTP/1.1 200 OK"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/sentence_bert_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/sentence_bert_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:10:30 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:31 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:10:31 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+2026-06-12 13:18:19 [INFO] JTCA: ============================================================
+2026-06-12 13:18:19 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:18:19 [INFO] JTCA: Starting application...
+2026-06-12 13:18:19 [INFO] JTCA: ============================================================
+2026-06-12 13:18:20 [INFO] JTCA: Initializing database...
+2026-06-12 13:18:21 [INFO] database.db: Database schema initialized.
+2026-06-12 13:18:21 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:18:21 [INFO] JTCA: Database ready. Loading UI...
+2026-06-12 13:18:23 [INFO] JTCA: Application UI launched.
+2026-06-12 13:18:23 [INFO] JTCA: [RAG] Connecting to vector store...
+2026-06-12 13:18:26 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:18:26 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 0
+2026-06-12 13:18:26 [INFO] JTCA: [RAG] Downloading AI embedding model (first run)...
+2026-06-12 13:18:26 [INFO] JTCA: [RAG] Indexing 24 tariff rules...
+2026-06-12 13:18:35 [INFO] ocr.pdf_extractor: Extracting from: ASSIGNMENT_1_AI_CHAIRIS(303808),CHEN WEI YU(303822),MUHAMMAD LUTFIR RAHMAN BIN KAHARMIZI(307381).pdf
+2026-06-12 13:18:35 [INFO] ocr.pdf_extractor: Extraction complete via pdfplumber: {"part_number": "", "product_description": "", "country_of_origin": "", "declared_value": 0.0, "extraction_method": "pdfplumber"}
+2026-06-12 13:18:35 [INFO] ui.dashboard: OCR complete: {'part_number': '', 'product_description': '', 'country_of_origin': '', 'declared_value': 0.0, 'raw_text': 'STINK1013(B)\nINTRODUCTION TO ARTIFICIAL INTELLIGENCE\n(GROUP B)\nSEMESTER A241\nASSIGNMENT 1\nLECTURER NAME:\nPUAN NUR AZZAH BT ABU BAKAR\nPREPARED BY:\nNAME MATRIC\nCHAIRIS A/L PUM 303808\nCHEN WEI YU 303822\nMUHAMMAD LUTFIR RAHMAN 307381\nBIN KAHARMIZI\nDATE OF SUBMISSION:\n3 DECEMBER 2024\n1\nNAME | MATRIC\nCHAIRIS A/L PUM | 303808\nCHEN WEI YU | 303822\nMUHAMMAD LUTFIR RAHMAN\nBIN KAHARMIZI | 307381\nContents\n1.0 Explore The Topic .......................................................................................................... 3\n2.0 Represent Semantic Network ........................................................................................ 4\n3.0 Construct FOPL expressions. ........................................................................................ 5\n4.0 Perform forward chaining.............................................................................................. 7\n5.0 Write a PROLOG.......................................................................................................... 11\n2\nFROG AND TOAD\nCHAIRIS A/L PUM(303808), CHEN WEI YU(303822), MUHAMMAD\nLUTFIR RAHMAN BIN KAHARMIZI(307381)\nSchool of Computing,College of Arts and Sciences\nUniversiti Utara Malaysia\n1.0 Explore The Topic\nMake use of ChatGPT or any other relevant sources (e.g. the Web, encyclopedia) to get\ninformation about the topic. While exploring, identify the objects/concepts related to the topic,\nattributes, values, and relationships.\nFrogs and toads are cold-blooded, vertebrate, undergo metamorphosis, and live in moist\nenvironment. They can be categorized into two groups: frogs and toads. Frogs typically have\nsmooth skin, moist skin, long legs, can jump higher and habitat in ponds. Notable frog species\ninclude burrowing frogs and poison dart frogs. Burrowing frogs have thick and tough skin and\nhabitat through burrow in ground. Brim is a burrowing frog. While Poison dart frogs have toxic\nskins, and habitat in rainforest leaf litter. Azureus is a poison dart frog. On the o', 'extraction_method': 'pdfplumber'}
+2026-06-12 13:18:35 [WARNING] rag.retrieval: Vector store is empty. Initialize with seed data first.
+2026-06-12 13:18:35 [WARNING] llm.gemini_service: No Gemini API key — returning demo response.
+2026-06-12 13:18:35 [INFO] services.approval_engine: Routing: confidence=75 → status=Pending Review (threshold=90)
+2026-06-12 13:18:35 [INFO] database.db: Shipment inserted: SHIP-20260612-131835-EF83
+2026-06-12 13:18:35 [INFO] database.db: Audit log: AI_PROCESSED for SHIP-20260612-131835-EF83
+2026-06-12 13:18:41 [INFO] rag.embeddings: Loading SentenceTransformer model: all-MiniLM-L6-v2
+2026-06-12 13:18:42 [INFO] sentence_transformers.base.model: No device provided, using cuda:0
+2026-06-12 13:18:42 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:18:42 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:18:43 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:18:43 [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-06-12 13:18:43 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:18:43 [INFO] sentence_transformers.base.model: Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-06-12 13:18:43 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:18:43 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:18:43 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:18:43 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md "HTTP/1.1 200 OK"
+2026-06-12 13:18:44 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:18:44 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:18:44 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:18:44 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/sentence_bert_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:18:44 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:18:44 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:18:44 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:18:45 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+2026-06-12 13:19:06 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/processor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:19:06 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/preprocessor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:19:07 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/video_preprocessor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:19:07 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/preprocessor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:19:07 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:07 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:07 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:08 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:08 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:08 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:08 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:08 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:08 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:09 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-06-12 13:19:09 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-06-12 13:19:09 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:09 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/vocab.txt "HTTP/1.1 200 OK"
+2026-06-12 13:19:09 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/vocab.txt "HTTP/1.1 200 OK"
+2026-06-12 13:19:10 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:10 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:10 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:10 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/added_tokens.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:19:10 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/special_tokens_map.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:10 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/special_tokens_map.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:10 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/special_tokens_map.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:11 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/chat_template.jinja "HTTP/1.1 404 Not Found"
+2026-06-12 13:19:11 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/1_Pooling/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:19:11 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:11 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
+2026-06-12 13:19:11 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+2026-06-12 13:19:11 [INFO] rag.embeddings: Model loaded successfully.
+2026-06-12 13:19:12 [INFO] rag.vector_store: Upserted 24 tariff rules into ChromaDB.
+2026-06-12 13:19:12 [INFO] JTCA: [RAG] RAG ready: 24 rules indexed.
+2026-06-12 13:19:39 [INFO] JTCA: ============================================================
+2026-06-12 13:19:39 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:19:39 [INFO] JTCA: Starting application...
+2026-06-12 13:19:39 [INFO] JTCA: ============================================================
+2026-06-12 13:19:40 [INFO] JTCA: Initializing database...
+2026-06-12 13:19:41 [INFO] database.db: Database schema initialized.
+2026-06-12 13:19:41 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:19:41 [INFO] JTCA: Database ready. Loading UI...
+2026-06-12 13:19:43 [INFO] JTCA: Application UI launched.
+2026-06-12 13:19:43 [INFO] JTCA: [RAG] Connecting to vector store...
+2026-06-12 13:19:45 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:19:46 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 24
+2026-06-12 13:19:46 [INFO] JTCA: [RAG] RAG ready: 24 rules in vector store.
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] Starting crawl cycle...
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] Target: MITI Malaysia FTA (https://www.miti.gov.my/index.php/pages/view/ftas)
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] crawl4ai not installed. Please run: pip install crawl4ai
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] Target: WTO Tariff Download (https://www.wto.org/english/tratop_e/tariffs_e/tariff_data_e.htm)
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] crawl4ai not installed. Please run: pip install crawl4ai
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] Target: ASEAN Trade Repository (https://atr.asean.org/)
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] crawl4ai not installed. Please run: pip install crawl4ai
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] Saved 0 / 0 rules to database.
+2026-06-12 13:20:09 [INFO] crawler.crawl4ai_service: [Crawler] Crawl cycle complete.
+2026-06-12 13:20:13 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 0
+2026-06-12 13:20:13 [INFO] rag.vector_store: Collection reset.
+2026-06-12 13:20:24 [INFO] rag.embeddings: Loading SentenceTransformer model: all-MiniLM-L6-v2
+2026-06-12 13:20:24 [INFO] sentence_transformers.base.model: No device provided, using cuda:0
+2026-06-12 13:20:25 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:25 [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-06-12 13:20:25 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:25 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:25 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:25 [INFO] sentence_transformers.base.model: Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-06-12 13:20:26 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:26 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:26 [WARNING] sentence_transformers.base.model: Could not fetch README.md from 'sentence-transformers/all-MiniLM-L6-v2' (RemoteProtocolError: Server disconnected without sending a response.). Model will load without a model card.
+2026-06-12 13:20:40 [INFO] JTCA: ============================================================
+2026-06-12 13:20:40 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:20:40 [INFO] JTCA: Starting application...
+2026-06-12 13:20:40 [INFO] JTCA: ============================================================
+2026-06-12 13:20:41 [INFO] JTCA: Initializing database...
+2026-06-12 13:20:41 [INFO] database.db: Database schema initialized.
+2026-06-12 13:20:41 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:20:41 [INFO] JTCA: Database ready. Loading UI...
+2026-06-12 13:20:44 [INFO] JTCA: Application UI launched.
+2026-06-12 13:20:44 [INFO] JTCA: [RAG] Connecting to vector store...
+2026-06-12 13:20:46 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:20:46 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 0
+2026-06-12 13:20:46 [INFO] JTCA: [RAG] Downloading AI embedding model (first run)...
+2026-06-12 13:20:46 [INFO] JTCA: [RAG] Indexing 24 tariff rules...
+2026-06-12 13:20:56 [INFO] rag.embeddings: Loading SentenceTransformer model: all-MiniLM-L6-v2
+2026-06-12 13:20:56 [INFO] sentence_transformers.base.model: No device provided, using cuda:0
+2026-06-12 13:20:56 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:56 [WARNING] huggingface_hub.utils._http: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-06-12 13:20:56 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:56 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:56 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:57 [INFO] sentence_transformers.base.model: Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-06-12 13:20:57 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:57 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:57 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:57 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md "HTTP/1.1 200 OK"
+2026-06-12 13:20:57 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:57 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:58 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:58 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/sentence_bert_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:58 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:20:58 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:20:58 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:20:59 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/processor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:20:59 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/preprocessor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:20:59 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/video_preprocessor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:20:59 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/preprocessor_config.json "HTTP/1.1 404 Not Found"
+2026-06-12 13:21:00 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:21:00 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:21:00 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:21:00 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:21:00 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:21:00 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json "HTTP/1.1 200 OK"
+2026-06-12 13:21:01 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:21:01 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-06-12 13:21:01 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-06-12 13:21:01 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-06-12 13:21:01 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/1_Pooling/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-06-12 13:21:01 [INFO] httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
+2026-06-12 13:21:02 [INFO] httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+2026-06-12 13:21:02 [INFO] rag.embeddings: Model loaded successfully.
+2026-06-12 13:21:02 [INFO] rag.vector_store: Upserted 24 tariff rules into ChromaDB.
+2026-06-12 13:21:02 [INFO] JTCA: [RAG] RAG ready: 24 rules indexed.
+2026-06-12 13:21:19 [INFO] database.db: Shipment SHIP-20260612-131835-EF83 updated to status: Rejected
+2026-06-12 13:21:19 [INFO] database.db: Audit log: HUMAN_REJECTED_OVERRIDE for SHIP-20260612-131835-EF83
+2026-06-12 13:21:19 [INFO] ui.review_dialog: Shipment SHIP-20260612-131835-EF83 rejected and overridden by Anonymous
+2026-06-12 13:21:22 [INFO] database.db: Shipment SHIP-20260612-131835-EF83 updated to status: Approved
+2026-06-12 13:21:22 [INFO] database.db: Audit log: HUMAN_APPROVED for SHIP-20260612-131835-EF83
+2026-06-12 13:23:05 [INFO] JTCA: ============================================================
+2026-06-12 13:23:05 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:23:05 [INFO] JTCA: Starting application...
+2026-06-12 13:23:05 [INFO] JTCA: ============================================================
+2026-06-12 13:23:06 [INFO] JTCA: Initializing database...
+2026-06-12 13:23:07 [INFO] database.db: Database schema initialized.
+2026-06-12 13:23:07 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:23:07 [INFO] JTCA: Database ready. Loading UI...
+2026-06-12 13:23:09 [INFO] JTCA: Application UI launched.
+2026-06-12 13:23:09 [INFO] JTCA: [RAG] Connecting to vector store...
+2026-06-12 13:23:12 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:23:12 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 24
+2026-06-12 13:23:12 [INFO] JTCA: [RAG] RAG ready: 24 rules in vector store.
+2026-06-12 13:25:25 [INFO] JTCA: ============================================================
+2026-06-12 13:25:25 [INFO] JTCA: JTCA - Jabil TradeAI Compliance Assistant
+2026-06-12 13:25:25 [INFO] JTCA: Starting application...
+2026-06-12 13:25:25 [INFO] JTCA: ============================================================
+2026-06-12 13:25:26 [INFO] JTCA: Initializing database...
+2026-06-12 13:25:26 [INFO] database.db: Database schema initialized.
+2026-06-12 13:25:26 [INFO] database.db: Tariff rules already seeded (24 records). Skipping.
+2026-06-12 13:25:26 [INFO] JTCA: Database ready. Loading UI...
+2026-06-12 13:25:29 [INFO] JTCA: Application UI launched.
+2026-06-12 13:25:29 [INFO] JTCA: [RAG] Connecting to vector store...
+2026-06-12 13:25:32 [INFO] rag.vector_store: ChromaDB client initialized at: D:\codingProject\Jabil-Hackathon\JTCA\data\chroma_store
+2026-06-12 13:25:32 [INFO] rag.vector_store: Collection 'jtca_tariff_rules' ready. Count: 24
+2026-06-12 13:25:32 [INFO] JTCA: [RAG] RAG ready: 24 rules in vector store.

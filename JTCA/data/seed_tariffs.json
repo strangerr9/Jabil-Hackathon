@@ -1,0 +1,242 @@
+[
+  {
+    "hs_code": "847130",
+    "product_description": "Portable automatic data processing machines, weighing not more than 10 kg, laptop computer notebook",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "USMCA / General",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "847141",
+    "product_description": "Other automatic data processing machines comprising a central processing unit and input/output unit",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "854231",
+    "product_description": "Electronic integrated circuits, processors and controllers",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "854232",
+    "product_description": "Electronic integrated circuits, memories",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "854233",
+    "product_description": "Electronic integrated circuits, amplifiers",
+    "origin_country": "China",
+    "destination_country": "USA",
+    "tariff_percent": 25.0,
+    "fta_name": "Section 301 Tariff",
+    "regulation_source": "https://ustr.gov/issue-areas/enforcement/section-301-investigations",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "847330",
+    "product_description": "Parts and accessories of the machines of heading 8471, printed circuit boards PCB",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "847330",
+    "product_description": "PCB printed circuit board assembly PCBA electronic components",
+    "origin_country": "China",
+    "destination_country": "USA",
+    "tariff_percent": 25.0,
+    "fta_name": "Section 301 Tariff",
+    "regulation_source": "https://ustr.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "850440",
+    "product_description": "Static converters, power supply units, switching power supply",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 1.5,
+    "fta_name": "MFN Rate",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "853669",
+    "product_description": "Electrical apparatus for switching or protecting electrical circuits, connectors",
+    "origin_country": "Mexico",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "USMCA",
+    "regulation_source": "https://ustr.gov/trade-agreements/free-trade-agreements/united-states-mexico-canada-agreement",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "901380",
+    "product_description": "Liquid crystal devices LCD display panel flat panel display",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "853710",
+    "product_description": "Boards, panels, consoles, desks, cabinets for electric control, server rack cabinet",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "847150",
+    "product_description": "Processing units other than those of subheading 8471.41 or 8471.49, server computer",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "854140",
+    "product_description": "Photosensitive semiconductor devices, solar cells, LED light emitting diode",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "391000",
+    "product_description": "Silicones in primary forms, silicone encapsulant material",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 3.0,
+    "fta_name": "MFN Rate",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "730890",
+    "product_description": "Structures and parts of structures of iron or steel, chassis frames",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 25.0,
+    "fta_name": "Section 232 Steel",
+    "regulation_source": "https://www.commerce.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "847160",
+    "product_description": "Input or output units whether or not containing storage units in the same housing, keyboard mouse",
+    "origin_country": "China",
+    "destination_country": "USA",
+    "tariff_percent": 7.5,
+    "fta_name": "Section 301 List 4A",
+    "regulation_source": "https://ustr.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "854370",
+    "product_description": "Electrical machines and apparatus, having individual functions, antenna module wireless",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "870899",
+    "product_description": "Other parts and accessories of motor vehicles, automotive electronic control unit ECU",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 2.5,
+    "fta_name": "MFN Rate",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "853890",
+    "product_description": "Parts suitable for use solely with the apparatus of heading 8535, 8536, or 8537, relay contactor",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "MFN Rate",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "852580",
+    "product_description": "Television cameras, digital cameras and video camera recorders, CMOS image sensor module",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "847170",
+    "product_description": "Storage units, solid state drive SSD hard disk drive HDD data storage device",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "ITA Agreement",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "850710",
+    "product_description": "Lead-acid electric accumulators battery of a kind used for starting piston engines",
+    "origin_country": "China",
+    "destination_country": "USA",
+    "tariff_percent": 27.5,
+    "fta_name": "Section 301 + AD/CVD",
+    "regulation_source": "https://ustr.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "854420",
+    "product_description": "Coaxial cable and other coaxial electric conductors, RF cable assembly",
+    "origin_country": "Malaysia",
+    "destination_country": "USA",
+    "tariff_percent": 1.8,
+    "fta_name": "MFN Rate",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  },
+  {
+    "hs_code": "847190",
+    "product_description": "Other automatic data processing machines, tablet computing device",
+    "origin_country": "Vietnam",
+    "destination_country": "USA",
+    "tariff_percent": 0.0,
+    "fta_name": "MFN Rate",
+    "regulation_source": "https://hts.usitc.gov/",
+    "last_updated": "2024-01-15"
+  }
+]
