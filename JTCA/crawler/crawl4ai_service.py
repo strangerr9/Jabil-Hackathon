@@ -10,6 +10,10 @@ import asyncio
 import logging
 import re
 import json
+import os
+import requests
+import pdfplumber
+import tempfile
 from datetime import datetime
 from typing import Callable
 
@@ -49,9 +53,25 @@ CRAWL_TARGETS = [
 # ─────────────────────────────────────────────
 def _parse_hs_codes_from_text(text: str, source_url: str, origin: str) -> list[dict]:
     """
-    Extract HS codes and tariff percentages from crawled HTML text.
-    Uses regex to find common patterns.
+    Extract HS codes and tariff percentages from crawled HTML/document text.
+    First tries custom LLM-based extraction using Google Gemini,
+    then falls back to regex matching for offline/demo/unauthenticated runs.
     """
+    # Step 1: Try LLM-based extraction first
+    try:
+        from llm.gemini_service import extract_rules_from_text
+        llm_rules = extract_rules_from_text(text, origin)
+        if llm_rules:
+            # Overwrite source_url to match crawled portal source
+            for r in llm_rules:
+                r["regulation_source"] = source_url
+            logger.info(f"[Crawler] Extracted {len(llm_rules)} rules using Gemini LLM strategy.")
+            return llm_rules
+    except Exception as e:
+        logger.warning(f"[Crawler] Gemini LLM parsing strategy bypassed/failed: {e}")
+
+    # Step 2: Fallback to regex-based parser
+    logger.info("[Crawler] Using regex parsing fallback strategy.")
     rules = []
     now = datetime.now().isoformat()
 
@@ -103,44 +123,54 @@ async def _crawl_pdf_url(
     log_callback: Callable[[str], None] | None = None,
 ) -> list[dict]:
     """
-    Crawl a PDF URL using crawl4ai's PDFContentScrapingStrategy.
-    Falls back to raw text extraction if strategy is unavailable.
+    Download and extract PDF content directly using requests and pdfplumber.
+    This bypasses browser anti-bot issues and crawl4ai pypdf strategy bugs.
     """
     def log(msg):
         logger.info(msg)
         if log_callback:
             log_callback(msg)
 
-    log(f"[Crawler] Detected PDF URL — using PDFContentScrapingStrategy: {url}")
+    log(f"[Crawler] Detected PDF URL - downloading directly: {url}")
 
     try:
-        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, PDFContentScrapingStrategy
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        r = requests.get(url, headers=headers, timeout=30)
+        if r.status_code != 200:
+            log(f"[Crawler] Failed to download PDF (HTTP {r.status_code}): {url}")
+            return []
 
-        browser_config = BrowserConfig(headless=True, verbose=False)
-        run_config = CrawlerRunConfig(
-            scraping_strategy=PDFContentScrapingStrategy(),
-            word_count_threshold=5,
-        )
+        # Save binary to temporary file
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(r.content)
+            tmp_path = tmp.name
 
-        async with AsyncWebCrawler(config=browser_config) as crawler:
-            result = await crawler.arun(url=url, config=run_config)
-
-            if not result.success:
-                log(f"[Crawler] PDFContentScrapingStrategy failed for: {url}")
-                return []
-
-            text = result.markdown or result.cleaned_html or ""
-            log(f"[Crawler] PDF extracted {len(text)} characters from {url}")
+        try:
+            log(f"[Crawler] Saved temporary PDF. Extracting text page-by-page...")
+            all_text = []
+            with pdfplumber.open(tmp_path) as pdf:
+                total_pages = len(pdf.pages)
+                for idx, page in enumerate(pdf.pages, 1):
+                    if idx % 10 == 0 or idx == total_pages:
+                        log(f"[Crawler] Extracting page {idx} / {total_pages}...")
+                    page_text = page.extract_text()
+                    if page_text:
+                        all_text.append(page_text)
+            
+            text = "\n".join(all_text)
+            log(f"[Crawler] PDF extracted {len(text)} characters.")
+            
             rules = _parse_hs_codes_from_text(text, url, origin)
-            log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF")
+            log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF.")
             return rules
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
-    except ImportError as e:
-        log(f"[Crawler] PDFContentScrapingStrategy not available ({e}). "
-            "Upgrade crawl4ai: pip install -U crawl4ai")
-        return []
     except Exception as e:
-        log(f"[Crawler] PDF crawl error for {url}: {e}")
+        log(f"[Crawler] PDF download/parse error for {url}: {e}")
         return []
 
 

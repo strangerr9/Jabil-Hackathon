@@ -36,7 +36,7 @@ def route_shipment(confidence_score: float) -> str:
         status = "Pending Review"
 
     logger.info(
-        f"Routing: confidence={confidence_score} → status={status} "
+        f"Routing: confidence={confidence_score} -> status={status} "
         f"(threshold={CONFIDENCE_THRESHOLD})"
     )
     return status

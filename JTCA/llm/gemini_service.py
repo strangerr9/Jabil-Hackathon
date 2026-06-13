@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -289,3 +290,79 @@ def _demo_response(description: str, origin: str) -> dict:
         "shipping_country": "Malaysia" if origin.lower() != "taiwan" else "Hong Kong",
         "wto_member_status": "Yes",
     }
+
+
+def extract_rules_from_text(text: str, origin: str) -> list[dict]:
+    """
+    Call Gemini API to extract structured tariff rules from crawled document text.
+    Returns a list of dicts formatted for database insertion.
+    """
+    if not GEMINI_API_KEY:
+        logger.warning("No Gemini API key for crawler parsing — using regex fallback.")
+        return []
+
+    prompt = f"""You are an expert trade compliance data extraction specialist.
+Analyze the following crawled web page / document content and extract a list of import tariff rules.
+
+For each rule, extract:
+- hs_code: 6-digit HS Code string
+- product_description: description of the product or product category
+- tariff_percent: Float tariff percentage rate (e.g., 2.5, 0.0, 25.0)
+- fta_name: Name of the free trade agreement or trade program (e.g. ACFTA, USMCA, MFN, General, None)
+
+Response format:
+You MUST respond with ONLY a valid JSON list of objects — no markdown, no explanation outside the JSON.
+Format example:
+[
+  {{
+    "hs_code": "854233",
+    "product_description": "Electronic integrated circuits, amplifiers",
+    "tariff_percent": 25.0,
+    "fta_name": "Section 301"
+  }}
+]
+
+If no rules are found in the text, return an empty list: [].
+
+=== CRAWLED TEXT ===
+{text[:30000]}
+"""
+
+    try:
+        genai = _get_genai()
+        model = genai.GenerativeModel(MODEL_NAME)
+        # Use low temperature for deterministic parsing
+        response = model.generate_content(
+            prompt,
+            generation_config={"temperature": 0.0}
+        )
+        resp_text = response.text.strip()
+        # Clean markdown wrappers if present
+        resp_text = re.sub(r"^```(?:json)?\s*", "", resp_text, flags=re.MULTILINE)
+        resp_text = re.sub(r"\s*```$", "", resp_text, flags=re.MULTILINE)
+        resp_text = resp_text.strip()
+        
+        extracted = json.loads(resp_text)
+        if isinstance(extracted, list):
+            rules = []
+            for item in extracted:
+                hs = str(item.get("hs_code", "")).strip().replace(".", "")[:6]
+                if not hs.isdigit() or len(hs) < 4:
+                    continue
+                rules.append({
+                    "hs_code": hs,
+                    "product_description": str(item.get("product_description", ""))[:200],
+                    "origin_country": origin,
+                    "destination_country": "USA",
+                    "tariff_percent": float(item.get("tariff_percent", 0.0)),
+                    "fta_name": str(item.get("fta_name", "Web Extract")),
+                    "regulation_source": "Web Crawl",
+                    "last_updated": datetime.now().isoformat(),
+                })
+            logger.info(f"Successfully extracted {len(rules)} structured rules from crawled text using Gemini.")
+            return rules
+        return []
+    except Exception as e:
+        logger.error(f"Failed to extract rules using Gemini: {e}")
+        return []
+

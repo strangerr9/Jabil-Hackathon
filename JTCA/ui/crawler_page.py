@@ -302,6 +302,16 @@ class CrawlerPage(QWidget):
         )
         delete_btn.clicked.connect(self._delete_selected_rules)
 
+        clear_crawled_btn = QPushButton("🗑 Clear Crawled Data")
+        clear_crawled_btn.setObjectName("btn_danger")
+        clear_crawled_btn.setCursor(Qt.PointingHandCursor)
+        clear_crawled_btn.setStyleSheet(
+            "QPushButton { background-color: #7A1C1C; color: #FCA5A5; font-weight: bold; "
+            "padding: 6px 14px; border-radius: 4px; border: 1px solid #EF4444; font-size: 12px; }"
+            "QPushButton:hover { background-color: #B91C1C; }"
+        )
+        clear_crawled_btn.clicked.connect(self._delete_all_crawled_rules)
+
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.setObjectName("btn_secondary")
         refresh_btn.setCursor(Qt.PointingHandCursor)
@@ -317,6 +327,7 @@ class CrawlerPage(QWidget):
         toolbar.addWidget(refresh_btn)
         toolbar.addWidget(export_btn)
         toolbar.addWidget(delete_btn)
+        toolbar.addWidget(clear_crawled_btn)
         layout.addLayout(toolbar)
 
         # ── Table ───────────────────────────────────────
@@ -617,3 +628,45 @@ class CrawlerPage(QWidget):
             self._load_tariff_table()
         except Exception as e:
             QMessageBox.critical(self, "Delete Error", str(e))
+
+    def _delete_all_crawled_rules(self):
+        """Delete all rules matching 'Web Crawl' or 'Web Extract' from database and ChromaDB."""
+        confirm = QMessageBox.question(
+            self, "Confirm Clear Crawled Data",
+            "Are you sure you want to delete all crawled tariff rules from the database?\n"
+            "Seed tariff rules will be preserved. This cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm != QMessageBox.Yes:
+            return
+
+        self._append_log("[System] Clearing crawled data from databases...")
+        try:
+            from database.db import get_connection
+            from rag.vector_store import upsert_tariff_rules, reset_collection
+            from database.db import get_all_tariff_rules
+            
+            conn = get_connection()
+            # Delete crawled rules (both Web Crawl and Web Extract)
+            cursor = conn.execute("DELETE FROM tariff_rules WHERE fta_name LIKE 'Web%'")
+            deleted_count = cursor.rowcount
+            conn.commit()
+            conn.close()
+
+            self._append_log(f"[System] 🗑 Deleted {deleted_count} crawled rule(s) from SQLite database.")
+
+            # Re-index ChromaDB with the remaining rules (seed rules)
+            reset_collection()
+            remaining_rules = get_all_tariff_rules()
+            upsert_tariff_rules(remaining_rules)
+            self._append_log(f"[System] ✅ Vector store re-indexed with {len(remaining_rules)} remaining rules.")
+
+            QMessageBox.information(
+                self, "Success",
+                f"Successfully deleted {deleted_count} crawled rule(s).\nVector store has been updated."
+            )
+            self._load_tariff_table()
+        except Exception as e:
+            self._append_log(f"[Error] ❌ Failed to clear crawled data: {e}")
+            QMessageBox.critical(self, "Clear Error", f"Failed to clear crawled data: {e}")
+
