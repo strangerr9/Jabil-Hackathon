@@ -446,6 +446,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1280, 780)
         self.resize(1400, 860)
         self._nav_buttons: list[SidebarButton] = []
+        self._pages: list[QWidget] = []
         self._current_page = 0
         self._setup_ui()
 
@@ -522,6 +523,30 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addStretch()
 
+        # ── User Profile Panel ─────────────────────────
+        self.profile_frame = QFrame()
+        self.profile_frame.setStyleSheet("""
+            QFrame {
+                background-color: #0A1A35;
+                border: 1px solid #1565C0;
+                border-radius: 8px;
+                margin: 8px;
+            }
+        """)
+        profile_layout = QVBoxLayout(self.profile_frame)
+        profile_layout.setContentsMargins(12, 10, 12, 10)
+        profile_layout.setSpacing(6)
+
+        self.profile_user_lbl = QLabel("👤 Guest User")
+        self.profile_user_lbl.setStyleSheet("color: #FFFFFF; font-weight: bold; font-size: 12px;")
+        
+        self.profile_role_lbl = QLabel("Guest")
+        self.profile_role_lbl.setAlignment(Qt.AlignCenter)
+        
+        profile_layout.addWidget(self.profile_user_lbl)
+        profile_layout.addWidget(self.profile_role_lbl)
+        sidebar_layout.addWidget(self.profile_frame)
+
         # Separator
         sep2 = QFrame()
         sep2.setFrameShape(QFrame.HLine)
@@ -534,13 +559,13 @@ class MainWindow(QMainWindow):
         sidebar_layout.addWidget(info_label)
         sidebar_layout.addSpacing(8)
 
-        # Logout button
-        logout_btn = QPushButton("  🚪  Logout")
-        logout_btn.setObjectName("nav_btn")
-        logout_btn.setCursor(Qt.PointingHandCursor)
-        logout_btn.setMinimumHeight(40)
-        logout_btn.clicked.connect(self._on_logout)
-        sidebar_layout.addWidget(logout_btn)
+        # Sign Out button
+        self.logout_btn = QPushButton("  🚪  Sign Out")
+        self.logout_btn.setObjectName("nav_btn")
+        self.logout_btn.setCursor(Qt.PointingHandCursor)
+        self.logout_btn.setMinimumHeight(40)
+        self.logout_btn.clicked.connect(self._on_logout)
+        sidebar_layout.addWidget(self.logout_btn)
         sidebar_layout.addSpacing(8)
 
         root_layout.addWidget(sidebar)
@@ -555,8 +580,9 @@ class MainWindow(QMainWindow):
             self._nav_buttons[0].set_active(True)
 
     def add_page(self, widget: QWidget):
-        """Add a page to the stacked widget."""
+        """Add a page to the stacked widget and track it."""
         self.stack.addWidget(widget)
+        self._pages.append(widget)
 
     def navigate_to(self, index: int):
         """Switch to a page by index."""
@@ -571,14 +597,67 @@ class MainWindow(QMainWindow):
             index = self._nav_buttons.index(button)
             self.navigate_to(index)
 
+    def apply_permissions(self):
+        """Apply active user role permissions to the sidebar and all sub-pages."""
+        from services.session import SessionManager
+        session = SessionManager()
+        username = session.get_username()
+        role = session.get_role()
+        
+        # Update profile sidebar display
+        self.profile_user_lbl.setText(f"👤 {username}")
+        self.profile_role_lbl.setText(role.upper())
+        
+        if role == "Admin":
+            self.profile_role_lbl.setStyleSheet("""
+                background-color: #1E3A8A;
+                color: #93C5FD;
+                font-size: 10px;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 3px 6px;
+                border: 1px solid #3B82F6;
+            """)
+        else:  # Trade Analyst
+            self.profile_role_lbl.setStyleSheet("""
+                background-color: #064E3B;
+                color: #6EE7B7;
+                font-size: 10px;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 3px 6px;
+                border: 1px solid #059669;
+            """)
+
+        # Call apply_permissions on any page that has it
+        for page in self._pages:
+            if hasattr(page, "apply_permissions"):
+                try:
+                    page.apply_permissions()
+                except Exception as e:
+                    logger.error(f"Error applying permissions to page {page}: {e}")
+
     def _on_logout(self):
         from PySide6.QtWidgets import QMessageBox
         reply = QMessageBox.question(
             self,
-            "Logout",
-            "Are you sure you want to exit JTCA?",
+            "Sign Out",
+            "Are you sure you want to sign out of JTCA?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
         if reply == QMessageBox.Yes:
-            QApplication.quit()
+            from services.session import SessionManager
+            from ui.login_dialog import LoginDialog
+            
+            SessionManager().logout()
+            self.hide()
+            
+            login_dlg = LoginDialog()
+            if login_dlg.exec() == LoginDialog.Accepted:
+                self.apply_permissions()
+                # Navigate to dashboard (index 0) upon relogin
+                self.navigate_to(0)
+                self.show()
+            else:
+                QApplication.quit()

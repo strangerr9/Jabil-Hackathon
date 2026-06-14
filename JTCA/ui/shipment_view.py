@@ -496,15 +496,18 @@ class ShipmentViewPage(QWidget):
         if not self._current_shipment:
             return
         from database.db import update_shipment_status, insert_audit_log
+        from services.session import SessionManager
 
         sid = self._current_shipment["shipment_id"]
-        update_shipment_status(sid, "Approved", reviewer_name="Human Reviewer")
+        reviewer = SessionManager().get_username() or "Human Reviewer"
+        
+        update_shipment_status(sid, "Approved", reviewer_name=reviewer)
         insert_audit_log(
             shipment_id=sid,
             action="HUMAN_APPROVED",
             ai_recommendation=f"HS:{self._current_shipment.get('suggested_hs_code')}",
             human_decision="Approved",
-            reviewer_name="Human Reviewer",
+            reviewer_name=reviewer,
         )
         self._current_shipment["status"] = "Approved"
         self._set_status_badge("Approved")

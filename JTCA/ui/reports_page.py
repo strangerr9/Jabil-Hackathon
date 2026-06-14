@@ -129,7 +129,7 @@ class ReportsPage(QWidget):
 
     def refresh_data(self):
         try:
-            from database.db import get_dashboard_stats, get_connection
+            from database.db import get_dashboard_stats, get_recent_audit_log
 
             stats = get_dashboard_stats()
             self._stat_labels["total"].setText(str(stats.get("total", 0)))
@@ -143,17 +143,8 @@ class ReportsPage(QWidget):
                 f"${stats.get('total_duties', 0):,.2f}"
             )
 
-            # Load audit log
-            conn = get_connection()
-            try:
-                cur = conn.execute(
-                    "SELECT timestamp, shipment_id, action, ai_recommendation, "
-                    "human_decision, reviewer_name, notes "
-                    "FROM audit_log ORDER BY timestamp DESC LIMIT 200"
-                )
-                rows = cur.fetchall()
-            finally:
-                conn.close()
+            # Load audit log using PostgreSQL-safe API
+            rows = get_recent_audit_log(limit=200)
 
             self.audit_table.setRowCount(0)
             for row_idx, row in enumerate(rows):

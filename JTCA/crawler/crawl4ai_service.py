@@ -10,6 +10,10 @@ import asyncio
 import logging
 import re
 import json
+import os
+import requests
+import pdfplumber
+import tempfile
 from datetime import datetime
 from typing import Callable
 
@@ -47,46 +51,114 @@ CRAWL_TARGETS = [
 # ─────────────────────────────────────────────
 # HS Code / Tariff Rate Parsers
 # ─────────────────────────────────────────────
-def _parse_hs_codes_from_text(text: str, source_url: str, origin: str) -> list[dict]:
+def _parse_hs_codes_from_text(text: str, source_url: str, fta_name: str) -> list[dict]:
     """
-    Extract HS codes and tariff percentages from crawled HTML text.
-    Uses regex to find common patterns.
+    Extract HS codes and tariff percentages from crawled HTML/document text.
+    First tries custom LLM-based extraction using Google Gemini,
+    then falls back to regex matching for offline/demo/unauthenticated runs.
     """
+    # Map fta_name to participating countries
+    fta_upper = fta_name.upper().strip()
+    if "ACFTA" in fta_upper or "ACTFA" in fta_upper or "ASEAN-CHINA" in fta_upper or "ASEAN CHINA" in fta_upper:
+        origin_country = "China, ASEAN"
+        destination_country = "ASEAN"
+        clean_fta_name = "ACFTA"
+    elif "USMCA" in fta_upper or "NAFTA" in fta_upper:
+        origin_country = "Canada, Mexico"
+        destination_country = "USA"
+        clean_fta_name = "USMCA"
+    elif "EU-JAPAN" in fta_upper or "EU JAPAN" in fta_upper:
+        origin_country = "Japan"
+        destination_country = "EU"
+        clean_fta_name = "EU-Japan EPA"
+    else:
+        origin_country = fta_name
+        destination_country = "Global"
+        clean_fta_name = fta_name
+
+    # Step 1: Try LLM-based extraction first
+    try:
+        from llm.gemini_service import extract_rules_from_text
+        llm_rules = extract_rules_from_text(text, origin=origin_country, destination=destination_country, fta_name=clean_fta_name)
+        if llm_rules:
+            # Overwrite source_url to match crawled portal source
+            for r in llm_rules:
+                r["regulation_source"] = source_url
+            allowed_prefixes = {"8542", "8541", "8534", "8536", "8504", "8517", "8471", "8473", "8486"}
+            filtered_llm = [r for r in llm_rules if r.get("hs_code", "")[:4] in allowed_prefixes]
+            logger.info(f"[Crawler] Extracted {len(llm_rules)} rules using Gemini LLM strategy. Filtered to {len(filtered_llm)} Jabil-focused rules.")
+            return filtered_llm
+    except Exception as e:
+        logger.warning(f"[Crawler] Gemini LLM parsing strategy bypassed/failed: {e}")
+
+    # Step 2: Fallback to regex-based parser
+    logger.info("[Crawler] Using regex parsing fallback strategy.")
     rules = []
     now = datetime.now().isoformat()
 
-    # Pattern: HS code (6-10 digits) followed by product text and percentage
-    hs_pattern = re.compile(
-        r"\b(\d{4}[\.\s]?\d{2}[\.\s]?\d{0,4})\b"
-        r"(.{5,150}?)"
-        r"(\d{1,2}(?:\.\d{1,2})?)\s*%",
-        re.DOTALL,
+    # Pattern specifically for Malaysia/MITI/ASEAN PDF layouts:
+    # Subheading (8 digits/dots) + stats (2 digits) + description + unit (u/kg/etc) + rate
+    miti_pattern = re.compile(
+        r"^\s*(\d{4}\.\d{2}\.\d{2})\s+(\d{2})\s+(.+?)\s+(u|kg|l|m3|m|kg/l)\s+(\d+(?:\.\d+)?)\s*$",
+        re.MULTILINE
     )
 
-    for match in hs_pattern.finditer(text):
-        raw_hs = re.sub(r"[\s\.]", "", match.group(1))
-        if len(raw_hs) < 6:
-            continue
+    miti_matches = list(miti_pattern.finditer(text))
+    if miti_matches:
+        logger.info(f"[Crawler] Found {len(miti_matches)} MITI-style rows in crawled text.")
+        for match in miti_matches:
+            raw_hs = re.sub(r"[\s\.]", "", match.group(1))
+            hs_code = raw_hs[:6]
+            description = match.group(3).strip()
+            # Clean leading dashes and dots from description
+            description = re.sub(r"^[\s\-\.]+", "", description)
+            tariff_percent = float(match.group(5))
+            
+            rules.append({
+                "hs_code": hs_code,
+                "product_description": description,
+                "origin_country": origin_country,
+                "destination_country": destination_country,
+                "tariff_percent": tariff_percent,
+                "fta_name": clean_fta_name,
+                "regulation_source": source_url,
+                "last_updated": now,
+            })
+    else:
+        # Fallback to general percentage regex pattern
+        hs_pattern = re.compile(
+            r"\b(\d{4}[\.\s]?\d{2}[\.\s]?\d{0,4})\b"
+            r"(.{5,150}?)"
+            r"(\d{1,2}(?:\.\d{1,2})?)\s*%",
+            re.DOTALL,
+        )
+        for match in hs_pattern.finditer(text):
+            raw_hs = re.sub(r"[\s\.]", "", match.group(1))
+            if len(raw_hs) < 6:
+                continue
 
-        hs_code = raw_hs[:6]  # Normalize to 6 digits
-        description = match.group(2).strip()[:200]
-        tariff_percent = float(match.group(3))
+            hs_code = raw_hs[:6]  # Normalize to 6 digits
+            description = match.group(2).strip()[:200]
+            tariff_percent = float(match.group(3))
 
-        if tariff_percent > 100 or tariff_percent < 0:
-            continue
+            if tariff_percent > 100 or tariff_percent < 0:
+                continue
 
-        rules.append({
-            "hs_code": hs_code,
-            "product_description": description,
-            "origin_country": origin,
-            "destination_country": "USA",
-            "tariff_percent": tariff_percent,
-            "fta_name": "Web Crawl",
-            "regulation_source": source_url,
-            "last_updated": now,
-        })
+            rules.append({
+                "hs_code": hs_code,
+                "product_description": description,
+                "origin_country": origin_country,
+                "destination_country": destination_country,
+                "tariff_percent": tariff_percent,
+                "fta_name": clean_fta_name,
+                "regulation_source": source_url,
+                "last_updated": now,
+            })
 
-    return rules
+    allowed_prefixes = {"8542", "8541", "8534", "8536", "8504", "8517", "8471", "8473", "8486"}
+    filtered_rules = [r for r in rules if r.get("hs_code", "")[:4] in allowed_prefixes]
+    logger.info(f"[Crawler] Regex parsed {len(rules)} rules. Filtered to {len(filtered_rules)} Jabil-focused rules.")
+    return filtered_rules
 
 
 # ─────────────────────────────────────────────
@@ -103,44 +175,54 @@ async def _crawl_pdf_url(
     log_callback: Callable[[str], None] | None = None,
 ) -> list[dict]:
     """
-    Crawl a PDF URL using crawl4ai's PDFContentScrapingStrategy.
-    Falls back to raw text extraction if strategy is unavailable.
+    Download and extract PDF content directly using requests and pdfplumber.
+    This bypasses browser anti-bot issues and crawl4ai pypdf strategy bugs.
     """
     def log(msg):
         logger.info(msg)
         if log_callback:
             log_callback(msg)
 
-    log(f"[Crawler] Detected PDF URL — using PDFContentScrapingStrategy: {url}")
+    log(f"[Crawler] Detected PDF URL - downloading directly: {url}")
 
     try:
-        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, PDFContentScrapingStrategy
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        r = requests.get(url, headers=headers, timeout=30)
+        if r.status_code != 200:
+            log(f"[Crawler] Failed to download PDF (HTTP {r.status_code}): {url}")
+            return []
 
-        browser_config = BrowserConfig(headless=True, verbose=False)
-        run_config = CrawlerRunConfig(
-            scraping_strategy=PDFContentScrapingStrategy(),
-            word_count_threshold=5,
-        )
+        # Save binary to temporary file
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(r.content)
+            tmp_path = tmp.name
 
-        async with AsyncWebCrawler(config=browser_config) as crawler:
-            result = await crawler.arun(url=url, config=run_config)
-
-            if not result.success:
-                log(f"[Crawler] PDFContentScrapingStrategy failed for: {url}")
-                return []
-
-            text = result.markdown or result.cleaned_html or ""
-            log(f"[Crawler] PDF extracted {len(text)} characters from {url}")
+        try:
+            log(f"[Crawler] Saved temporary PDF. Extracting text page-by-page...")
+            all_text = []
+            with pdfplumber.open(tmp_path) as pdf:
+                total_pages = len(pdf.pages)
+                for idx, page in enumerate(pdf.pages, 1):
+                    if idx % 10 == 0 or idx == total_pages:
+                        log(f"[Crawler] Extracting page {idx} / {total_pages}...")
+                    page_text = page.extract_text()
+                    if page_text:
+                        all_text.append(page_text)
+            
+            text = "\n".join(all_text)
+            log(f"[Crawler] PDF extracted {len(text)} characters.")
+            
             rules = _parse_hs_codes_from_text(text, url, origin)
-            log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF")
+            log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF.")
             return rules
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
 
-    except ImportError as e:
-        log(f"[Crawler] PDFContentScrapingStrategy not available ({e}). "
-            "Upgrade crawl4ai: pip install -U crawl4ai")
-        return []
     except Exception as e:
-        log(f"[Crawler] PDF crawl error for {url}: {e}")
+        log(f"[Crawler] PDF download/parse error for {url}: {e}")
         return []
 
 
@@ -218,8 +300,11 @@ async def run_crawler_async(
     """
     Run full crawl cycle across all configured targets.
 
-    Args:
-        log_callback: Optional function to receive real-time log messages
+    Pipeline:
+      1. Crawl each target URL
+      2. Dump raw rules → MongoDB (fast, schema-free)
+      3. ETL pipeline: MongoDB → validate → PostgreSQL
+      4. ChromaDB vector store refresh (handled inside ETL)
 
     Returns:
         {
@@ -229,10 +314,6 @@ async def run_crawler_async(
             "errors": list[str]
         }
     """
-    from database.db import insert_tariff_rule
-    from rag.vector_store import upsert_tariff_rules, reset_collection
-    from database.db import get_all_tariff_rules
-
     def log(msg):
         logger.info(msg)
         if log_callback:
@@ -247,9 +328,28 @@ async def run_crawler_async(
             "errors": ["crawl4ai is not installed."],
         }
 
+    # ── MongoDB + ETL imports (graceful degradation) ────────
+    try:
+        from database.mongo_db import (
+            insert_raw_crawls_bulk, start_crawl_run, finish_crawl_run
+        )
+        use_mongo = True
+    except Exception as e:
+        log(f"[Crawler] MongoDB unavailable, falling back to direct DB write: {e}")
+        use_mongo = False
+
+    from database.db import insert_tariff_rule
+
     log("[Crawler] Starting crawl cycle...")
     all_rules = []
     errors = []
+
+    # Start a crawl session in MongoDB
+    crawl_run_id = ""
+    if use_mongo:
+        target_urls = [t["url"] for t in CRAWL_TARGETS]
+        crawl_run_id = start_crawl_run(target_urls)
+        log(f"[Crawler] Crawl session started: {crawl_run_id}")
 
     for target in CRAWL_TARGETS:
         log(f"[Crawler] Target: {target['name']} ({target['url']})")
@@ -260,29 +360,49 @@ async def run_crawler_async(
                 log_callback=log_callback,
             )
             all_rules.extend(rules)
+
+            # ── Write raw rules to MongoDB ─────────────────
+            if use_mongo and rules:
+                inserted = insert_raw_crawls_bulk(
+                    rules, source_url=target["url"], crawl_run_id=crawl_run_id
+                )
+                log(f"[Crawler] Dumped {inserted} raw rules to MongoDB from {target['name']}.")
+
         except Exception as e:
             err = f"Error on {target['name']}: {e}"
             errors.append(err)
             log(f"[Crawler] {err}")
 
-    # Insert new rules into SQLite
+    # ── ETL: MongoDB → PostgreSQL ──────────────────────────
     saved = 0
-    for rule in all_rules:
-        if insert_tariff_rule(rule):
-            saved += 1
-
-    log(f"[Crawler] Saved {saved} / {len(all_rules)} rules to database.")
-
-    # Refresh vector store
-    if saved > 0:
-        log("[Crawler] Re-indexing vector store...")
+    if use_mongo and all_rules:
+        log("[Crawler] Running ETL pipeline: MongoDB -> PostgreSQL...")
         try:
-            reset_collection()
-            all_db_rules = get_all_tariff_rules()
-            upsert_tariff_rules(all_db_rules)
-            log(f"[Crawler] Vector store updated with {len(all_db_rules)} rules.")
+            from database.etl_pipeline import run_etl
+            etl_result = run_etl(log_callback=log_callback, refresh_vector_store=True)
+            saved = etl_result["saved"]
+            errors.extend(etl_result["errors"])
+            log(f"[Crawler] ETL complete: {saved} rules saved to PostgreSQL.")
         except Exception as e:
-            log(f"[Crawler] Vector store update failed: {e}")
+            log(f"[Crawler] ETL failed, falling back to direct insert: {e}")
+            errors.append(str(e))
+            # Fallback: write directly to PostgreSQL without MongoDB
+            for rule in all_rules:
+                if insert_tariff_rule(rule):
+                    saved += 1
+    else:
+        # No MongoDB — write directly to PostgreSQL
+        for rule in all_rules:
+            if insert_tariff_rule(rule):
+                saved += 1
+        log(f"[Crawler] Saved {saved} / {len(all_rules)} rules directly to PostgreSQL.")
+
+    # Finish crawl session in MongoDB
+    if use_mongo and crawl_run_id:
+        try:
+            finish_crawl_run(crawl_run_id, len(all_rules), saved, errors)
+        except Exception:
+            pass
 
     log("[Crawler] Crawl cycle complete.")
     return {
@@ -311,11 +431,7 @@ async def crawl_custom_source_async(
     origin: str,
     log_callback: Callable[[str], None] | None = None,
 ) -> dict:
-    """Crawl a custom source URL and update the SQLite/Chroma DB rule systems."""
-    from database.db import insert_tariff_rule
-    from rag.vector_store import upsert_tariff_rules, reset_collection
-    from database.db import get_all_tariff_rules
-
+    """Crawl a custom source URL, dump to MongoDB, then ETL → PostgreSQL."""
     def log(msg):
         logger.info(msg)
         if log_callback:
@@ -330,7 +446,22 @@ async def crawl_custom_source_async(
             "errors": ["crawl4ai is not installed."],
         }
 
+    # ── MongoDB import (graceful degradation) ──────────────
+    try:
+        from database.mongo_db import insert_raw_crawls_bulk, start_crawl_run, finish_crawl_run
+        use_mongo = True
+    except Exception as e:
+        log(f"[Crawler] MongoDB unavailable: {e}")
+        use_mongo = False
+
+    from database.db import insert_tariff_rule
+
     log(f"[Crawler] Starting custom crawl on: {url} (Origin: {origin})")
+
+    crawl_run_id = ""
+    if use_mongo:
+        crawl_run_id = start_crawl_run([url])
+
     try:
         rules = await _crawl_single_url(
             url=url,
@@ -346,28 +477,44 @@ async def crawl_custom_source_async(
             "errors": [str(e)],
         }
 
+    # ── Write raw to MongoDB ───────────────────────────────
+    if use_mongo and rules:
+        inserted = insert_raw_crawls_bulk(rules, source_url=url, crawl_run_id=crawl_run_id)
+        log(f"[Crawler] Dumped {inserted} raw rules to MongoDB.")
+
+    # ── ETL: MongoDB → PostgreSQL ──────────────────────────
     saved = 0
-    for rule in rules:
-        if insert_tariff_rule(rule):
-            saved += 1
-
-    log(f"[Crawler] Saved {saved} / {len(rules)} custom rules to database.")
-
-    if saved > 0:
-        log("[Crawler] Re-indexing vector store...")
+    errors = []
+    if use_mongo and rules:
+        log("[Crawler] Running ETL pipeline: MongoDB -> PostgreSQL...")
         try:
-            reset_collection()
-            all_db_rules = get_all_tariff_rules()
-            upsert_tariff_rules(all_db_rules)
-            log(f"[Crawler] Vector store updated with {len(all_db_rules)} rules.")
+            from database.etl_pipeline import run_etl
+            etl_result = run_etl(log_callback=log_callback, refresh_vector_store=True)
+            saved = etl_result["saved"]
+            errors = etl_result["errors"]
         except Exception as e:
-            log(f"[Crawler] Vector store update failed: {e}")
+            log(f"[Crawler] ETL failed, falling back to direct insert: {e}")
+            errors.append(str(e))
+            for rule in rules:
+                if insert_tariff_rule(rule):
+                    saved += 1
+    else:
+        for rule in rules:
+            if insert_tariff_rule(rule):
+                saved += 1
+        log(f"[Crawler] Saved {saved} / {len(rules)} custom rules directly to PostgreSQL.")
+
+    if use_mongo and crawl_run_id:
+        try:
+            finish_crawl_run(crawl_run_id, len(rules), saved, errors)
+        except Exception:
+            pass
 
     return {
         "rules_found": len(rules),
         "rules_saved": saved,
         "sources_crawled": 1,
-        "errors": [],
+        "errors": errors,
     }
 
 

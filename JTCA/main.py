@@ -19,6 +19,15 @@ import os
 import logging
 from pathlib import Path
 
+# Prevent UnicodeEncodeErrors on Windows by forcing stdout/stderr to UTF-8
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
+    except Exception:
+        pass
+
+
 # ─────────────────────────────────────────────
 # Setup: ensure JTCA root is on sys.path
 # ─────────────────────────────────────────────
@@ -294,10 +303,22 @@ def main():
     # ── Show Window ─────────────────────────────
     def _show_and_start_rag():
         splash.close()
-        window.show()
-        logger.info("Application UI launched.")
-        # Start RAG in background AFTER window is visible
-        _rag_worker.start()
+        
+        # Import login components inside to prevent circular import issues
+        from ui.login_dialog import LoginDialog
+        
+        login_dlg = LoginDialog()
+        if login_dlg.exec() == LoginDialog.Accepted:
+            # Apply permissions based on the chosen role
+            window.apply_permissions()
+            window.show()
+            logger.info("Application UI launched.")
+            # Start RAG in background AFTER window is visible
+            _rag_worker.start()
+        else:
+            logger.info("Login cancelled. Exiting application.")
+            QApplication.quit()
+            sys.exit(0)
 
     QTimer.singleShot(2000, _show_and_start_rag)
 

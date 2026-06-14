@@ -134,6 +134,7 @@ PATTERNS = {
         # Use [A-Za-z0-9 \-] NOT [\s] — \s includes \n which causes cross-line capture!
         # e.g. correctly captures "EU-Japan EPA" or "ACFTA" or "No"
         r"(?i)(?:FTA[^\S\n]*Applicable|FTA[^\S\n]*Name|Free[^\S\n]*Trade[^\S\n]*Agreement)[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
+        r"(?i)(?:Applicable[^\S\n]*FTA)[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
         r"(?i)\bFTA[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
     ],
 }
@@ -233,7 +234,19 @@ def _extract_with_regex(text: str) -> dict:
     # Pre-process: strip table header rows to avoid false matches
     clean_text = _preprocess_text(text)
 
+    # Try matching standard Jabil invoice line item row first (highly robust)
+    row_pattern = r"^\s*(?!(?:Shipment|Supplier|Invoice|Plant|Material|Shipping|Country|WTO|FTA|Footer|Compliance|Generated|Page)\b)([A-Z0-9][A-Z0-9\-_.]{2,30})\s+(.+?)\s+\b(" + _COUNTRIES + r")\b\s+(\d{1,8}(?:\.\d{2})?)\s*$"
+    row_match = re.search(row_pattern, clean_text, re.MULTILINE | re.IGNORECASE)
+    if row_match:
+        result["part_number"] = row_match.group(1).strip()
+        result["product_description"] = row_match.group(2).strip()
+        result["country_of_origin"] = _normalize_country(row_match.group(3).strip())
+        result["declared_value"] = _clean_value(row_match.group(4).strip())
+        logger.info(f"Successfully matched table row: Part={result['part_number']}, Desc={result['product_description']}, Country={result['country_of_origin']}, Value={result['declared_value']}")
+
     for field, patterns in PATTERNS.items():
+        if result[field]:  # Skip if already extracted by table row regex
+            continue
         for pattern in patterns:
             match = re.search(pattern, clean_text, re.MULTILINE)
             if match:

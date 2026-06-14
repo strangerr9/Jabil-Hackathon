@@ -168,6 +168,8 @@ class ReviewDialog(QDialog):
             "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;"
         )
         self.reviewer_input = QLineEdit()
+        from services.session import SessionManager
+        self.reviewer_input.setText(SessionManager().get_username())
         self.reviewer_input.setPlaceholderText("Enter your name")
         self.reviewer_input.setMinimumHeight(38)
         layout.addWidget(reviewer_lbl)

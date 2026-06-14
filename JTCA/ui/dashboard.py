@@ -182,10 +182,12 @@ class ProcessingWorker(QThread):
 
             # Step 3: Gemini
             self.progress.emit("🤖 Generating AI recommendation (Gemini)...")
+            dest_country = ocr_data.get("shipping_country", "").strip() or "Malaysia"
             ai_result = get_tariff_recommendation(
                 product_description=ocr_data["product_description"],
                 part_number=ocr_data.get("part_number", ""),
                 country_of_origin=ocr_data.get("country_of_origin", ""),
+                destination_country=dest_country,
                 declared_value=ocr_data.get("declared_value", 0.0),
                 rag_context=rag_context,
             )
@@ -213,6 +215,13 @@ class ProcessingWorker(QThread):
             suggested_hs = ai_result.get("suggested_hs_code", "")
             target_sap = "Table_ZLANDED_COST" if suggested_hs.startswith("9025") else "Condition_Type_ZDUT"
 
+            # Determine final FTA applicable: prioritize AI result, fallback to OCR if AI fails
+            ai_fta = ai_result.get("fta_applicable", "").strip()
+            ocr_fta = ocr_data.get("fta_applicable", "").strip()
+            final_fta = ai_fta
+            if final_fta in ["Unknown", "None", "", "No"]:
+                final_fta = ocr_fta or final_fta or "No"
+
             shipment_data = {
                 "shipment_id": shipment_id,
                 "part_number": ocr_data.get("part_number", "") or ai_result.get("manufacturing_part_number", ""),
@@ -231,7 +240,7 @@ class ProcessingWorker(QThread):
                 "supplier_name": ocr_data.get("supplier_name", "") or ai_result.get("supplier_name", "EMERSON"),
                 "shipping_country": ocr_data.get("shipping_country", "") or ai_result.get("shipping_country", "Malaysia"),
                 "wto_member_status": ocr_data.get("wto_member_status", "") or ai_result.get("wto_member_status", "Yes"),
-                "fta_applicable": ai_result.get("fta_applicable", "") or ocr_data.get("fta_applicable", "No"),
+                "fta_applicable": final_fta,
                 "target_sap_system": target_sap,
             }
             insert_shipment(shipment_data)
