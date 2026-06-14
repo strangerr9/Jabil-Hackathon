@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+**/__pycache__/
+**/*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+JTCA/.env
+
+# Databases
+*.db
+JTCA/data/jtca.db
+JTCA/data/chroma_store/
+
+# Logs
+*.log
+JTCA/logs/
+JTCA/logs/*.log
+
+# IDEs and editors
+.vscode/

@@ -20,10 +20,13 @@ chromadb>=0.5.0
 sentence-transformers>=3.0.0
 
 # --- LLM ---
-google-generativeai>=0.7.0
+google-genai>=2.0.0
 
 # --- Database ---
-# SQLite is built into Python stdlib
+# MongoDB driver (raw crawl storage)
+pymongo>=4.7.0
+# PostgreSQL driver (clean structured storage)
+psycopg2-binary>=2.9.9
 
 # --- Data Processing / Export ---
 pandas>=2.2.0

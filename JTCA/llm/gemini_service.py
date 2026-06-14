@@ -12,36 +12,37 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import List
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-3.5-flash")
 
 # ─────────────────────────────────────────────
 # Gemini Client (lazy init)
 # ─────────────────────────────────────────────
-_genai = None
+_client = None
 
 
-def _get_genai():
-    global _genai
-    if _genai is None:
+def _get_client():
+    global _client
+    if _client is None:
         if not GEMINI_API_KEY:
             logger.error("GEMINI_API_KEY not set. Check your .env file.")
             raise EnvironmentError("GEMINI_API_KEY is not configured.")
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            _genai = genai
-            logger.info("Gemini AI client configured.")
+            from google import genai
+            _client = genai.Client(api_key=GEMINI_API_KEY)
+            logger.info("Google GenAI client configured.")
         except ImportError:
-            logger.error("google-generativeai not installed.")
+            logger.error("google-genai not installed.")
             raise
-    return _genai
+    return _client
 
 
 # ─────────────────────────────────────────────
@@ -80,6 +81,7 @@ Rules:
 - reasoning_trace must be a list of 3-5 strings explaining your decision
 - If origin country has an FTA with the destination, note it in fta_applicable
 - If fields like shipment_id, material_type, plant_code, supplier_name, shipping_country, or wto_member_status are mentioned or can be inferred from the document description/text, extract them. Otherwise, default them sensibly based on standard Jabil trade practices (e.g., Material: ZROH, Plant: US02, Supplier: EMERSON, Shipping Country: Malaysia, WTO: Yes).
+- CRITICAL: You must ONLY recommend an HS Code if it is explicitly present in the retrieved "TARIFF KNOWLEDGE BASE CONTEXT" above. If the context is empty or does not contain a suitable HS Code for the product, you MUST return HS Code "000000" and confidence_score 0 to route it for manual human review. Do NOT use your general pre-trained knowledge to suggest or invent HS codes that are not in the retrieved context.
 """
 
 
@@ -87,6 +89,7 @@ def build_prompt(
     product_description: str,
     part_number: str,
     country_of_origin: str,
+    destination_country: str,
     declared_value: float,
     rag_context: str,
 ) -> str:
@@ -98,7 +101,7 @@ def build_prompt(
 Part Number: {part_number or 'Unknown'}
 Product Description: {product_description}
 Country of Origin: {country_of_origin}
-Destination Country: USA
+Destination Country: {destination_country}
 Declared Value: USD {declared_value:,.2f}
 
 {rag_context}
@@ -113,6 +116,68 @@ Respond with ONLY the JSON object.
 
 # ─────────────────────────────────────────────
 # Response Parser
+def _parse_partial_json(text: str) -> dict:
+    """
+    Attempt to extract fields using regex if JSON parsing fails.
+    This is extremely useful when responses are truncated but contain valid fields.
+    """
+    # Initialize with default fallback values
+    data = {
+        "suggested_hs_code": "000000",
+        "suggested_tariff_percent": 0.0,
+        "confidence_score": 0,
+        "reasoning_trace": ["Partial classification recovered from truncated response."],
+        "fta_applicable": "Unknown",
+        "regulation_source": "",
+        "shipment_id": "",
+        "material_type": "ZROH",
+        "plant_code": "US02",
+        "supplier_name": "EMERSON",
+        "shipping_country": "Malaysia",
+        "wto_member_status": "Yes",
+    }
+    
+    # Regex patterns for key-value extraction (supports quotes, single quotes, or bare numbers)
+    patterns = {
+        "suggested_hs_code": r'"suggested_hs_code"\s*:\s*["\']?(\d+)["\']?',
+        "suggested_tariff_percent": r'"suggested_tariff_percent"\s*:\s*["\']?([\d.]+)["\']?',
+        "confidence_score": r'"confidence_score"\s*:\s*["\']?(\d+)["\']?',
+        "fta_applicable": r'"fta_applicable"\s*:\s*["\']?([^"\']*)["\']?',
+        "regulation_source": r'"regulation_source"\s*:\s*["\']?([^"\']*)["\']?',
+        "shipment_id": r'"shipment_id"\s*:\s*["\']?([^"\']*)["\']?',
+        "material_type": r'"material_type"\s*:\s*["\']?([^"\']*)["\']?',
+        "plant_code": r'"plant_code"\s*:\s*["\']?([^"\']*)["\']?',
+        "supplier_name": r'"supplier_name"\s*:\s*["\']?([^"\']*)["\']?',
+        "shipping_country": r'"shipping_country"\s*:\s*["\']?([^"\']*)["\']?',
+        "wto_member_status": r'"wto_member_status"\s*:\s*["\']?([^"\']*)["\']?',
+    }
+    
+    for field, pattern in patterns.items():
+        match = re.search(pattern, text)
+        if match:
+            val = match.group(1).strip()
+            if field == "suggested_tariff_percent":
+                try:
+                    data[field] = float(val)
+                except ValueError:
+                    pass
+            elif field == "confidence_score":
+                try:
+                    data[field] = int(val)
+                except ValueError:
+                    pass
+            else:
+                data[field] = val
+                
+    # If suggested_hs_code was successfully recovered but confidence remains 0,
+    # set a reasonable non-zero confidence score for manual review rather than discarding it.
+    if data["suggested_hs_code"] != "000000" and data["confidence_score"] == 0:
+        data["confidence_score"] = 50  # Moderate confidence for partial parsing
+        data["reasoning_trace"].append("Note: Response was truncated; confidence score set to 50% for manual review.")
+        
+    return data
+
+
 # ─────────────────────────────────────────────
 def _parse_gemini_response(text: str) -> dict:
     """
@@ -144,7 +209,12 @@ def _parse_gemini_response(text: str) -> dict:
         }
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse Gemini JSON response: {e}")
-        logger.debug(f"Raw response: {text}")
+        logger.error(f"Raw response: {repr(text)}")
+        # Try to parse partially before falling back entirely
+        parsed_partial = _parse_partial_json(text)
+        if parsed_partial["suggested_hs_code"] != "000000":
+            logger.info(f"Successfully recovered partial classification from truncated response: HS={parsed_partial['suggested_hs_code']}")
+            return parsed_partial
         return _fallback_response()
 
 
@@ -169,6 +239,21 @@ def _fallback_response() -> dict:
     }
 
 
+class TariffRecommendation(BaseModel):
+    suggested_hs_code: str
+    suggested_tariff_percent: float
+    confidence_score: int
+    reasoning_trace: List[str]
+    fta_applicable: str
+    regulation_source: str
+    shipment_id: str
+    material_type: str
+    plant_code: str
+    supplier_name: str
+    shipping_country: str
+    wto_member_status: str
+
+
 # ─────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────
@@ -176,6 +261,7 @@ def get_tariff_recommendation(
     product_description: str,
     part_number: str = "",
     country_of_origin: str = "",
+    destination_country: str = "Malaysia",
     declared_value: float = 0.0,
     rag_context: str = "",
 ) -> dict:
@@ -186,6 +272,7 @@ def get_tariff_recommendation(
         product_description: Product text description
         part_number: Supplier part number
         country_of_origin: ISO country or full name
+        destination_country: Country of import/destination
         declared_value: Monetary value in USD
         rag_context: Pre-formatted RAG context string
 
@@ -201,46 +288,76 @@ def get_tariff_recommendation(
     """
     if not GEMINI_API_KEY:
         logger.warning("No Gemini API key — returning demo response.")
-        return _demo_response(product_description, country_of_origin)
+        return _demo_response(product_description, country_of_origin, destination_country)
 
     try:
-        genai = _get_genai()
-        model = genai.GenerativeModel(
-            model_name=MODEL_NAME,
-            generation_config={
-                "temperature": 0.2,  # Low temperature for consistent structured output
-                "top_p": 0.8,
-                "max_output_tokens": 1024,
-            },
-        )
+        client = _get_client()
+        from google.genai import types
 
         prompt = build_prompt(
             product_description=product_description,
             part_number=part_number,
             country_of_origin=country_of_origin,
+            destination_country=destination_country,
             declared_value=declared_value,
             rag_context=rag_context,
         )
 
         logger.info(f"Calling Gemini for: {product_description[:60]}")
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.2,
+                top_p=0.8,
+                max_output_tokens=1024,
+                response_mime_type="application/json",
+                response_schema=TariffRecommendation,
+            ),
+        )
         result = _parse_gemini_response(response.text)
         logger.info(f"Gemini response — HS: {result['suggested_hs_code']}, Confidence: {result['confidence_score']}%")
         return result
 
     except EnvironmentError:
-        return _demo_response(product_description, country_of_origin)
+        return _demo_response(product_description, country_of_origin, destination_country)
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
         return _fallback_response()
 
 
-def _demo_response(description: str, origin: str) -> dict:
+def _demo_response(description: str, origin: str, destination: str = "Malaysia") -> dict:
     """
     Demo fallback response when no API key is configured.
     Uses simple keyword matching for realistic demo behavior.
     """
     desc_lower = description.lower()
+    origin_lower = origin.lower().strip()
+    dest_lower = destination.lower().strip()
+
+    # List of ASEAN member states
+    asean_countries = {
+        "brunei", "cambodia", "indonesia", "laos", "malaysia",
+        "myanmar", "philippines", "singapore", "thailand", "vietnam"
+    }
+
+    # Determine FTA applicability dynamically based on origin and destination
+    if origin_lower and dest_lower:
+        if origin_lower == dest_lower:
+            fta = "Domestic"
+        elif (origin_lower == "china" and dest_lower in asean_countries) or (dest_lower == "china" and origin_lower in asean_countries):
+            if dest_lower == "singapore" or origin_lower == "singapore":
+                fta = "CSFTA"
+            else:
+                fta = "ACFTA"
+        elif (origin_lower == "japan" and dest_lower in ["germany", "france", "italy", "spain", "netherlands", "poland"]) or \
+             (dest_lower == "japan" and origin_lower in ["germany", "france", "italy", "spain", "netherlands", "poland"]):
+            fta = "EU-Japan EPA"
+        else:
+            fta = "No"
+    else:
+        # Keyword-based fallback for backward compatibility
+        fta = "ACFTA" if "suppresor" in desc_lower else ("CSFTA" if "sensor" in desc_lower else ("Domestic" if "pcb" in desc_lower else "No"))
 
     # Simple keyword-based classification for demo
     if any(kw in desc_lower for kw in ["laptop", "notebook", "computer", "pc"]):
@@ -262,7 +379,7 @@ def _demo_response(description: str, origin: str) -> dict:
     else:
         hs_code, tariff, material = "847190", 0.0, "ZROH"
 
-    confidence = 88 if origin.lower() in ["malaysia", "mexico", "usa"] else 75
+    confidence = 88 if origin_lower in ["malaysia", "mexico", "usa"] or origin_lower in asean_countries else 75
 
     # Match supplier and plant code based on product description keyword
     supplier = "EMERSON" if "sensor" in desc_lower or "suppresor" in desc_lower else "IBMRSS"
@@ -276,23 +393,30 @@ def _demo_response(description: str, origin: str) -> dict:
         "confidence_score": confidence,
         "reasoning_trace": [
             f"Product analyzed: '{description[:60]}'",
-            f"Origin country identified as {origin}",
+            f"Origin: {origin} | Destination: {destination}",
             f"HS Code {hs_code} matches product category based on description keywords",
-            f"Applicable tariff rate: {tariff}% based on origin-destination trade rules",
+            f"Trade Agreement: {fta} applied for {origin} -> {destination}",
             "Demo mode — connect Gemini API key for full AI reasoning",
         ],
-        "fta_applicable": "ACFTA" if "suppresor" in desc_lower else ("CSFTA" if "sensor" in desc_lower else ("Domestic" if "pcb" in desc_lower else "No")),
-        "regulation_source": "https://hts.usitc.gov/",
+        "fta_applicable": fta,
+        "regulation_source": "https://fta.miti.gov.my/" if fta == "ACFTA" else "https://hts.usitc.gov/",
         "shipment_id": ship_id,
         "material_type": material,
         "plant_code": plant,
         "supplier_name": supplier,
-        "shipping_country": "Malaysia" if origin.lower() != "taiwan" else "Hong Kong",
+        "shipping_country": destination,
         "wto_member_status": "Yes",
     }
 
 
-def extract_rules_from_text(text: str, origin: str) -> list[dict]:
+class ExtractedTariffRule(BaseModel):
+    hs_code: str
+    product_description: str
+    tariff_percent: float
+    fta_name: str
+
+
+def extract_rules_from_text(text: str, origin: str, destination: str = "Global", fta_name: str = "Web Extract") -> list[dict]:
     """
     Call Gemini API to extract structured tariff rules from crawled document text.
     Returns a list of dicts formatted for database insertion.
@@ -329,12 +453,17 @@ If no rules are found in the text, return an empty list: [].
 """
 
     try:
-        genai = _get_genai()
-        model = genai.GenerativeModel(MODEL_NAME)
-        # Use low temperature for deterministic parsing
-        response = model.generate_content(
-            prompt,
-            generation_config={"temperature": 0.0}
+        client = _get_client()
+        from google.genai import types
+
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.0,
+                response_mime_type="application/json",
+                response_schema=List[ExtractedTariffRule],
+            )
         )
         resp_text = response.text.strip()
         # Clean markdown wrappers if present
@@ -353,9 +482,9 @@ If no rules are found in the text, return an empty list: [].
                     "hs_code": hs,
                     "product_description": str(item.get("product_description", ""))[:200],
                     "origin_country": origin,
-                    "destination_country": "USA",
+                    "destination_country": destination,
                     "tariff_percent": float(item.get("tariff_percent", 0.0)),
-                    "fta_name": str(item.get("fta_name", "Web Extract")),
+                    "fta_name": fta_name or str(item.get("fta_name", "Web Extract")),
                     "regulation_source": "Web Crawl",
                     "last_updated": datetime.now().isoformat(),
                 })

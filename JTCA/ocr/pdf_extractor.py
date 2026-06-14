@@ -134,6 +134,7 @@ PATTERNS = {
         # Use [A-Za-z0-9 \-] NOT [\s] — \s includes \n which causes cross-line capture!
         # e.g. correctly captures "EU-Japan EPA" or "ACFTA" or "No"
         r"(?i)(?:FTA[^\S\n]*Applicable|FTA[^\S\n]*Name|Free[^\S\n]*Trade[^\S\n]*Agreement)[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
+        r"(?i)(?:Applicable[^\S\n]*FTA)[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
         r"(?i)\bFTA[^\S\n]*[:\-][^\S\n]*([A-Za-z0-9][A-Za-z0-9 \-]{1,40}?)(?:[^\S\n]{2,}|\n|$)",
     ],
 }

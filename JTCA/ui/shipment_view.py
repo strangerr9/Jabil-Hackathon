@@ -38,13 +38,13 @@ class InfoField(QWidget):
         lbl = QLabel(label.upper())
         lbl.setObjectName("label_field")
         lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1px;"
         )
 
         self.value_lbl = QLabel(value or "—")
         self.value_lbl.setObjectName("label_value")
         self.value_lbl.setStyleSheet(
-            f"color: #E2E8F0; font-size: 13px; font-weight: 500;"
+            f"font-size: 13px; font-weight: 500;"
             + ("font-family: 'Consolas', monospace;" if mono else "")
         )
         self.value_lbl.setWordWrap(True)
@@ -72,14 +72,11 @@ class ResultCard(QFrame):
         header = QHBoxLayout()
         title_lbl = QLabel(f"{icon}  {title}")
         title_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 1px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 1px;"
         )
 
         self.badge_lbl = QLabel("")
-        self.badge_lbl.setStyleSheet(
-            "background-color: #064E3B; color: #34D399; border: 1px solid #059669;"
-            "border-radius: 10px; padding: 2px 10px; font-size: 12px; font-weight: 700;"
-        )
+        self.badge_lbl.setObjectName("result_badge")
 
         header.addWidget(title_lbl)
         header.addStretch()
@@ -89,19 +86,19 @@ class ResultCard(QFrame):
         # Main value
         self.main_value = QLabel("—")
         self.main_value.setStyleSheet(
-            "color: #42A5F5; font-size: 22px; font-weight: 800; font-family: 'Consolas';"
+            "font-size: 22px; font-weight: 800; font-family: 'Consolas';"
         )
         layout.addWidget(self.main_value)
 
         # Source line
         self.source_lbl = QLabel("")
-        self.source_lbl.setStyleSheet("color: #4A6FA5; font-size: 10px;")
+        self.source_lbl.setStyleSheet("font-size: 10px;")
         self.source_lbl.setWordWrap(True)
         layout.addWidget(self.source_lbl)
 
         # Explanation label
         self.explanation_lbl = QLabel("")
-        self.explanation_lbl.setStyleSheet("color: #90CAF9; font-size: 11px;")
+        self.explanation_lbl.setStyleSheet("font-size: 11px;")
         self.explanation_lbl.setWordWrap(True)
         layout.addWidget(self.explanation_lbl)
 
@@ -116,24 +113,21 @@ class ResultCard(QFrame):
         self.main_value.setText(value)
         if badge_text:
             self.badge_lbl.setText(badge_text)
-            bg = self._badge_bg(badge_color)
-            self.badge_lbl.setStyleSheet(
-                f"background-color: {bg}; color: {badge_color}; "
-                "border-radius: 10px; padding: 2px 10px; "
-                "font-size: 12px; font-weight: 700;"
-            )
+            color_map = {
+                "#10B981": "approved",
+                "#F59E0B": "pending",
+                "#EF4444": "rejected",
+                "#42A5F5": "highlight",
+            }
+            status = color_map.get(badge_color, "pending")
+            self.badge_lbl.setProperty("status", status)
+            self.badge_lbl.style().unpolish(self.badge_lbl)
+            self.badge_lbl.style().polish(self.badge_lbl)
+            self.badge_lbl.setVisible(True)
+        else:
+            self.badge_lbl.setVisible(False)
         self.source_lbl.setText(f"🔗  {source}" if source else "")
         self.explanation_lbl.setText(explanation)
-
-    @staticmethod
-    def _badge_bg(color: str) -> str:
-        mapping = {
-            "#10B981": "#064E3B",
-            "#F59E0B": "#451A03",
-            "#EF4444": "#450A0A",
-            "#42A5F5": "#0D2147",
-        }
-        return mapping.get(color, "#0D2147")
 
 
 # ─────────────────────────────────────────────
@@ -159,10 +153,9 @@ class ShipmentViewPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background-color: #0A1628; border: none; }")
+        scroll.setStyleSheet("QScrollArea { border: none; }")
 
         content_widget = QWidget()
-        content_widget.setStyleSheet("background-color: #0A1628;")
         self._content_layout = QVBoxLayout(content_widget)
         self._content_layout.setSpacing(20)
         self._content_layout.setContentsMargins(28, 24, 28, 24)
@@ -186,7 +179,7 @@ class ShipmentViewPage(QWidget):
 
         self.page_title = QLabel("📋  Invoice Analysis")
         self.page_title.setObjectName("page_title")
-        self.page_title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        self.page_title.setStyleSheet("font-size: 20px; font-weight: 800;")
 
         self.status_badge = QLabel("Pending Review")
         self.status_badge.setObjectName("badge_pending")
@@ -248,7 +241,7 @@ class ShipmentViewPage(QWidget):
         # ── AI Results Section ─────────────────────────
         results_label = QLabel("AI CLASSIFICATION RESULTS")
         results_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         layout.addWidget(results_label)
 
@@ -267,7 +260,7 @@ class ShipmentViewPage(QWidget):
         # ── Reasoning Trace ────────────────────────────
         reasoning_label = QLabel("AI REASONING TRACE (EXPLAINABLE AI)")
         reasoning_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         layout.addWidget(reasoning_label)
 
@@ -281,7 +274,7 @@ class ShipmentViewPage(QWidget):
         # ── Calculation Steps ──────────────────────────
         calc_label = QLabel("DUTY CALCULATION STEPS")
         calc_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         layout.addWidget(calc_label)
 
@@ -294,8 +287,7 @@ class ShipmentViewPage(QWidget):
         self.calc_text.setReadOnly(True)
         self.calc_text.setMaximumHeight(180)
         self.calc_text.setStyleSheet(
-            "QTextEdit { background-color: #071020; color: #A5F3FC; "
-            "font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; "
+            "QTextEdit { font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 13px; "
             "border: 1px solid #1565C0; border-radius: 6px; padding: 10px; }"
         )
         calc_card_layout.addWidget(self.calc_text)
@@ -303,7 +295,7 @@ class ShipmentViewPage(QWidget):
         # Final Value
         self.final_value_label = QLabel("Final Landed Cost: —")
         self.final_value_label.setStyleSheet(
-            "color: #42A5F5; font-size: 18px; font-weight: 800; "
+            "font-size: 18px; font-weight: 800; "
             "padding: 10px 0; letter-spacing: 0.5px;"
         )
         calc_card_layout.addWidget(self.final_value_label)
@@ -312,7 +304,7 @@ class ShipmentViewPage(QWidget):
         # ── Action Buttons ─────────────────────────────
         action_label = QLabel("HUMAN REVIEW ACTIONS")
         action_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         layout.addWidget(action_label)
 
@@ -445,17 +437,14 @@ class ShipmentViewPage(QWidget):
 
         if not trace:
             lbl = QLabel("No reasoning trace available.")
-            lbl.setStyleSheet("color: #4A6FA5; font-size: 12px;")
+            lbl.setStyleSheet("font-size: 12px;")
             self._reasoning_layout.addWidget(lbl)
             return
 
         icons = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
         for i, step in enumerate(trace):
             step_frame = QFrame()
-            step_frame.setStyleSheet(
-                "QFrame { background-color: #0A1A35; border-radius: 6px; "
-                "border-left: 3px solid #1565C0; padding: 2px; }"
-            )
+            step_frame.setObjectName("reasoning_step")
             step_layout = QHBoxLayout(step_frame)
             step_layout.setContentsMargins(12, 8, 12, 8)
 
@@ -463,7 +452,7 @@ class ShipmentViewPage(QWidget):
             icon_lbl.setStyleSheet("font-size: 14px; min-width: 26px;")
 
             step_lbl = QLabel(str(step))
-            step_lbl.setStyleSheet("color: #CBD5E1; font-size: 12px; line-height: 1.5;")
+            step_lbl.setStyleSheet("font-size: 12px; line-height: 1.5;")
             step_lbl.setWordWrap(True)
 
             step_layout.addWidget(icon_lbl)
@@ -496,15 +485,18 @@ class ShipmentViewPage(QWidget):
         if not self._current_shipment:
             return
         from database.db import update_shipment_status, insert_audit_log
+        from services.session import SessionManager
 
         sid = self._current_shipment["shipment_id"]
-        update_shipment_status(sid, "Approved", reviewer_name="Human Reviewer")
+        reviewer = SessionManager().get_username() or "Human Reviewer"
+        
+        update_shipment_status(sid, "Approved", reviewer_name=reviewer)
         insert_audit_log(
             shipment_id=sid,
             action="HUMAN_APPROVED",
             ai_recommendation=f"HS:{self._current_shipment.get('suggested_hs_code')}",
             human_decision="Approved",
-            reviewer_name="Human Reviewer",
+            reviewer_name=reviewer,
         )
         self._current_shipment["status"] = "Approved"
         self._set_status_badge("Approved")

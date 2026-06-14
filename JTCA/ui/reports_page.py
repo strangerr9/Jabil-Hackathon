@@ -33,7 +33,8 @@ class ReportsPage(QWidget):
         # Header
         header = QHBoxLayout()
         title = QLabel("📊  Reports & Analytics")
-        title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        title.setObjectName("page_title")
+        title.setStyleSheet("font-size: 20px; font-weight: 800;")
 
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.setObjectName("btn_secondary")
@@ -61,8 +62,9 @@ class ReportsPage(QWidget):
         stats_layout.setContentsMargins(20, 16, 20, 16)
 
         stats_title = QLabel("SUMMARY STATISTICS")
+        stats_title.setObjectName("section_title")
         stats_title.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         stats_layout.addWidget(stats_title, 0, 0, 1, 4)
 
@@ -94,7 +96,7 @@ class ReportsPage(QWidget):
             self._stat_labels[key] = value_lbl
 
             name_lbl = QLabel(label)
-            name_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; font-weight: 600;")
+            name_lbl.setStyleSheet("font-size: 10px; font-weight: 600;")
             name_lbl.setAlignment(Qt.AlignCenter)
 
             col_layout.addWidget(icon_lbl)
@@ -107,8 +109,9 @@ class ReportsPage(QWidget):
         # Audit log
         audit_header = QHBoxLayout()
         audit_lbl = QLabel("AUDIT TRAIL LOG")
+        audit_lbl.setObjectName("section_title")
         audit_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         audit_header.addWidget(audit_lbl)
         audit_header.addStretch()
@@ -129,7 +132,7 @@ class ReportsPage(QWidget):
 
     def refresh_data(self):
         try:
-            from database.db import get_dashboard_stats, get_connection
+            from database.db import get_dashboard_stats, get_recent_audit_log
 
             stats = get_dashboard_stats()
             self._stat_labels["total"].setText(str(stats.get("total", 0)))
@@ -143,17 +146,8 @@ class ReportsPage(QWidget):
                 f"${stats.get('total_duties', 0):,.2f}"
             )
 
-            # Load audit log
-            conn = get_connection()
-            try:
-                cur = conn.execute(
-                    "SELECT timestamp, shipment_id, action, ai_recommendation, "
-                    "human_decision, reviewer_name, notes "
-                    "FROM audit_log ORDER BY timestamp DESC LIMIT 200"
-                )
-                rows = cur.fetchall()
-            finally:
-                conn.close()
+            # Load audit log using PostgreSQL-safe API
+            rows = get_recent_audit_log(limit=200)
 
             self.audit_table.setRowCount(0)
             for row_idx, row in enumerate(rows):

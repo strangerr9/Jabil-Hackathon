@@ -51,7 +51,7 @@ class StatCard(QFrame):
         self.label_lbl = QLabel(label)
         self.label_lbl.setObjectName("stat_label")
         self.label_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 600; text-transform: uppercase;"
+            "font-size: 11px; font-weight: 600; text-transform: uppercase;"
         )
 
         layout.addWidget(icon_label)
@@ -87,12 +87,12 @@ class DropZone(QFrame):
 
         self.text_label = QLabel("Drag & Drop Supplier PDF here")
         self.text_label.setStyleSheet(
-            "color: #90CAF9; font-size: 13px; font-weight: 600;"
+            "font-size: 13px; font-weight: 600;"
         )
         self.text_label.setAlignment(Qt.AlignCenter)
 
         hint = QLabel("or click to browse — PDF format only")
-        hint.setStyleSheet("color: #4A6FA5; font-size: 11px;")
+        hint.setStyleSheet("font-size: 11px;")
         hint.setAlignment(Qt.AlignCenter)
 
         layout.addWidget(icon)
@@ -104,10 +104,9 @@ class DropZone(QFrame):
             urls = event.mimeData().urls()
             if any(u.toLocalFile().lower().endswith(".pdf") for u in urls):
                 event.acceptProposedAction()
-                self.setStyleSheet(
-                    "QFrame#drop_zone { border: 2px dashed #42A5F5; "
-                    "background-color: #112244; border-radius: 12px; }"
-                )
+                self.setProperty("dragged", True)
+                self.style().unpolish(self)
+                self.style().polish(self)
                 self.text_label.setText("✅ Release to process PDF")
                 return
         event.ignore()
@@ -131,7 +130,9 @@ class DropZone(QFrame):
             self.file_dropped.emit(path)
 
     def _reset_style(self):
-        self.setStyleSheet("")
+        self.setProperty("dragged", False)
+        self.style().unpolish(self)
+        self.style().polish(self)
         self.text_label.setText("Drag & Drop Supplier PDF here")
 
 
@@ -182,10 +183,12 @@ class ProcessingWorker(QThread):
 
             # Step 3: Gemini
             self.progress.emit("🤖 Generating AI recommendation (Gemini)...")
+            dest_country = ocr_data.get("shipping_country", "").strip() or "Malaysia"
             ai_result = get_tariff_recommendation(
                 product_description=ocr_data["product_description"],
                 part_number=ocr_data.get("part_number", ""),
                 country_of_origin=ocr_data.get("country_of_origin", ""),
+                destination_country=dest_country,
                 declared_value=ocr_data.get("declared_value", 0.0),
                 rag_context=rag_context,
             )
@@ -213,6 +216,13 @@ class ProcessingWorker(QThread):
             suggested_hs = ai_result.get("suggested_hs_code", "")
             target_sap = "Table_ZLANDED_COST" if suggested_hs.startswith("9025") else "Condition_Type_ZDUT"
 
+            # Determine final FTA applicable: prioritize AI result, fallback to OCR if AI fails
+            ai_fta = ai_result.get("fta_applicable", "").strip()
+            ocr_fta = ocr_data.get("fta_applicable", "").strip()
+            final_fta = ai_fta
+            if final_fta in ["Unknown", "None", "", "No"]:
+                final_fta = ocr_fta or final_fta or "No"
+
             shipment_data = {
                 "shipment_id": shipment_id,
                 "part_number": ocr_data.get("part_number", "") or ai_result.get("manufacturing_part_number", ""),
@@ -231,7 +241,7 @@ class ProcessingWorker(QThread):
                 "supplier_name": ocr_data.get("supplier_name", "") or ai_result.get("supplier_name", "EMERSON"),
                 "shipping_country": ocr_data.get("shipping_country", "") or ai_result.get("shipping_country", "Malaysia"),
                 "wto_member_status": ocr_data.get("wto_member_status", "") or ai_result.get("wto_member_status", "Yes"),
-                "fta_applicable": ai_result.get("fta_applicable", "") or ocr_data.get("fta_applicable", "No"),
+                "fta_applicable": final_fta,
                 "target_sap_system": target_sap,
             }
             insert_shipment(shipment_data)
@@ -278,7 +288,7 @@ class DashboardPage(QWidget):
         page_title = QLabel("🏠  Dashboard")
         page_title.setObjectName("page_title")
         page_title.setFont(QFont("Segoe UI", 20, QFont.Bold))
-        page_title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        page_title.setStyleSheet("font-size: 20px; font-weight: 800;")
 
         refresh_btn = QPushButton("🔄  Refresh")
         refresh_btn.setObjectName("btn_secondary")
@@ -300,10 +310,10 @@ class DashboardPage(QWidget):
 
         # ── KPI Cards ──────────────────────────────────
         self.card_total = StatCard("Total Shipments", "0", "📦", "#42A5F5")
-        self.card_approved = StatCard("Approved", "0", "✅", "#10B981")
-        self.card_pending = StatCard("Pending Review", "0", "⏳", "#F59E0B")
-        self.card_confidence = StatCard("Avg Confidence", "0%", "🎯", "#A78BFA")
-        self.card_duties = StatCard("Total Duties (USD)", "$0", "💵", "#FB7185")
+        self.card_approved = StatCard("Approved", "0", "✅", "#1B8A4E")
+        self.card_pending = StatCard("Pending Review", "0", "⏳", "#C07A00")
+        self.card_confidence = StatCard("Avg Confidence", "0%", "🎯", "#2196F3")
+        self.card_duties = StatCard("Total Duties (USD)", "$0", "💵", "#1565C0")
 
         cards_layout = QHBoxLayout()
         cards_layout.setSpacing(16)
@@ -317,7 +327,7 @@ class DashboardPage(QWidget):
         # ── Drop Zone ──────────────────────────────────
         drop_section_label = QLabel("UPLOAD SUPPLIER INVOICE PDF")
         drop_section_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         layout.addWidget(drop_section_label)
 
@@ -328,7 +338,7 @@ class DashboardPage(QWidget):
         # ── Processing Status Label ────────────────────
         self.status_label = QLabel("")
         self.status_label.setStyleSheet(
-            "color: #42A5F5; font-size: 12px; font-style: italic; padding: 4px;"
+            "font-size: 12px; font-style: italic; padding: 4px;"
         )
         layout.addWidget(self.status_label)
 
@@ -336,7 +346,7 @@ class DashboardPage(QWidget):
         list_header = QHBoxLayout()
         list_label = QLabel("RECENT SHIPMENTS")
         list_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         list_header.addWidget(list_label)
         list_header.addStretch()
@@ -361,7 +371,7 @@ class DashboardPage(QWidget):
         layout.addWidget(self.table)
 
         hint = QLabel("💡 Double-click a row to view shipment details and AI recommendations")
-        hint.setStyleSheet("color: #4A6FA5; font-size: 11px; font-style: italic;")
+        hint.setStyleSheet("font-size: 11px; font-style: italic;")
         layout.addWidget(hint)
 
     # ── Data Methods ───────────────────────────────────────
