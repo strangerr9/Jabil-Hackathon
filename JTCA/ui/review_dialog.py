@@ -34,18 +34,7 @@ class ReviewDialog(QDialog):
         self.setMinimumWidth(540)
         self.setMinimumHeight(560)
         self.setModal(True)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #0D1F3C;
-            }
-            QWidget {
-                background-color: transparent;
-                color: #E2E8F0;
-            }
-            QLabel {
-                color: #E2E8F0;
-            }
-        """)
+        self.setObjectName("dialog")
         self._setup_ui()
 
     def _setup_ui(self):
@@ -55,20 +44,18 @@ class ReviewDialog(QDialog):
 
         # ── Header ─────────────────────────────────────
         header_frame = QFrame()
-        header_frame.setStyleSheet(
-            "QFrame { background-color: #0057A8; border-radius: 10px; padding: 12px; }"
-        )
+        header_frame.setObjectName("header_frame")
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(16, 12, 16, 12)
 
         title = QLabel("🔍  HUMAN REVIEW — OVERRIDE")
-        title.setStyleSheet("color: #FFFFFF; font-size: 15px; font-weight: 800; letter-spacing: 1px;")
+        title.setStyleSheet("font-size: 15px; font-weight: 800; letter-spacing: 1px;")
 
         subtitle = QLabel(
             f"Shipment: {self._shipment.get('shipment_id', '')[-16:]}\n"
             f"Product: {self._shipment.get('product_description', '')[:60]}"
         )
-        subtitle.setStyleSheet("color: #90CAF9; font-size: 11px;")
+        subtitle.setStyleSheet("font-size: 11px;")
         subtitle.setWordWrap(True)
 
         header_layout.addWidget(title)
@@ -84,7 +71,7 @@ class ReviewDialog(QDialog):
 
         curr_title = QLabel("CURRENT AI RECOMMENDATION")
         curr_title.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1.5px;"
         )
         current_layout.addWidget(curr_title)
 
@@ -96,9 +83,9 @@ class ReviewDialog(QDialog):
         ]:
             col = QVBoxLayout()
             lbl = QLabel(label)
-            lbl.setStyleSheet("color: #4A6FA5; font-size: 10px;")
+            lbl.setStyleSheet("font-size: 10px;")
             val = QLabel(fmt.format(self._shipment.get(key, 0)))
-            val.setStyleSheet("color: #42A5F5; font-size: 14px; font-weight: 700;")
+            val.setStyleSheet("font-size: 14px; font-weight: 700;")
             col.addWidget(lbl)
             col.addWidget(val)
             curr_row.addLayout(col)
@@ -115,14 +102,14 @@ class ReviewDialog(QDialog):
 
         override_title = QLabel("OVERRIDE VALUES")
         override_title.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1.5px;"
         )
         override_layout.addWidget(override_title)
 
         # HS Code
         hs_lbl = QLabel("HS CODE")
         hs_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1px;"
         )
         self.hs_input = QLineEdit()
         self.hs_input.setText(self._shipment.get("suggested_hs_code", ""))
@@ -134,7 +121,7 @@ class ReviewDialog(QDialog):
         # Tariff %
         tariff_lbl = QLabel("TARIFF RATE (%)")
         tariff_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1px;"
         )
         self.tariff_input = QDoubleSpinBox()
         self.tariff_input.setRange(0.0, 100.0)
@@ -142,17 +129,13 @@ class ReviewDialog(QDialog):
         self.tariff_input.setSuffix("  %")
         self.tariff_input.setValue(self._shipment.get("tariff_percent", 0.0))
         self.tariff_input.setMinimumHeight(38)
-        self.tariff_input.setStyleSheet(
-            "QDoubleSpinBox { background-color: #0D2147; border: 1px solid #1565C0; "
-            "border-radius: 6px; padding: 6px 12px; color: #E2E8F0; font-size: 13px; }"
-        )
         override_layout.addWidget(tariff_lbl)
         override_layout.addWidget(self.tariff_input)
 
         # Tax override field (additional)
         tax_lbl = QLabel("ADDITIONAL TAX / CUSTOMS CODE")
         tax_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1px;"
         )
         self.tax_input = QLineEdit()
         self.tax_input.setPlaceholderText("e.g. ZDUT / VAT / AD-CVD")
@@ -165,7 +148,7 @@ class ReviewDialog(QDialog):
         # ── Reviewer Name ───────────────────────────────
         reviewer_lbl = QLabel("REVIEWER NAME")
         reviewer_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1px;"
         )
         self.reviewer_input = QLineEdit()
         from services.session import SessionManager
@@ -178,7 +161,7 @@ class ReviewDialog(QDialog):
         # ── Feedback / Notes ────────────────────────────
         feedback_lbl = QLabel("FEEDBACK / REVIEW NOTES")
         feedback_lbl.setStyleSheet(
-            "color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;"
+            "font-size: 10px; font-weight: 700; letter-spacing: 1px;"
         )
         self.feedback_input = QTextEdit()
         self.feedback_input.setPlaceholderText(

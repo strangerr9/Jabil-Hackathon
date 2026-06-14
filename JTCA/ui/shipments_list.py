@@ -36,7 +36,8 @@ class ShipmentsListPage(QWidget):
         # Header
         header = QHBoxLayout()
         title = QLabel("📋  All Shipments")
-        title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        title.setObjectName("page_title")
+        title.setStyleSheet("font-size: 20px; font-weight: 800;")
 
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.setObjectName("btn_secondary")
@@ -82,7 +83,7 @@ class ShipmentsListPage(QWidget):
         filter_layout.addWidget(self.search_input, stretch=2)
 
         status_lbl = QLabel("Status:")
-        status_lbl.setStyleSheet("color: #90CAF9; font-size: 12px;")
+        status_lbl.setStyleSheet("font-size: 12px;")
         filter_layout.addWidget(status_lbl)
 
         self.status_filter = QComboBox()
@@ -95,7 +96,7 @@ class ShipmentsListPage(QWidget):
 
         # Count label
         self.count_label = QLabel("0 shipments")
-        self.count_label.setStyleSheet("color: #4A6FA5; font-size: 11px; font-style: italic;")
+        self.count_label.setStyleSheet("font-size: 11px; font-style: italic;")
         layout.addWidget(self.count_label)
 
         # Table
@@ -120,7 +121,7 @@ class ShipmentsListPage(QWidget):
         layout.addWidget(self.table)
 
         hint = QLabel("💡 Double-click to open details  |  Right-click or select row then click Delete to remove")
-        hint.setStyleSheet("color: #4A6FA5; font-size: 11px; font-style: italic;")
+        hint.setStyleSheet("font-size: 11px; font-style: italic;")
         layout.addWidget(hint)
 
     def refresh_data(self):
@@ -216,23 +217,6 @@ class ShipmentsListPage(QWidget):
             return
 
         menu = QMenu(self)
-        menu.setStyleSheet("""
-            QMenu {
-                background-color: #0D1F3C;
-                border: 1px solid #1565C0;
-                border-radius: 6px;
-                padding: 4px;
-            }
-            QMenu::item {
-                color: #E2E8F0;
-                padding: 8px 20px;
-                font-size: 12px;
-                border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #1565C0;
-            }
-        """)
 
         open_action = QAction("📋  Open Details", self)
         open_action.triggered.connect(

@@ -99,19 +99,26 @@ class FtaCard(QFrame):
         self.setMinimumHeight(140)
         self.setObjectName("fta_card")
 
-        border_color = "#3B82F6" if theme_color == "blue" else "#10B981" if theme_color == "green" else "#F59E0B"
-        bg_gradient = f"qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {border_color}1a, stop:1 #0A1628)"
+        if theme_color == "blue":
+            theme_color_rgb = "59, 130, 246"
+            border_color = "#3B82F6"
+        elif theme_color == "green":
+            theme_color_rgb = "16, 185, 129"
+            border_color = "#16A34A"
+        else:
+            theme_color_rgb = "245, 158, 11"
+            border_color = "#D97706"
 
         self.setStyleSheet(f"""
             QFrame#fta_card {{
-                background: {bg_gradient};
-                border: 1px solid {border_color}aa;
+                background-color: rgba({theme_color_rgb}, 0.08);
+                border: 1px solid {border_color};
                 border-radius: 12px;
                 padding: 16px;
             }}
             QFrame#fta_card:hover {{
+                background-color: rgba({theme_color_rgb}, 0.15);
                 border: 2px solid {border_color};
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {border_color}2b, stop:1 #0D1F3C);
             }}
         """)
 
@@ -121,12 +128,12 @@ class FtaCard(QFrame):
 
         # Title
         self.title_lbl = QLabel(title)
-        self.title_lbl.setStyleSheet("font-size: 15px; font-weight: 700; color: #FFFFFF;")
+        self.title_lbl.setStyleSheet("font-size: 15px; font-weight: 700;")
         layout.addWidget(self.title_lbl)
 
         # Description
         self.desc_lbl = QLabel(description)
-        self.desc_lbl.setStyleSheet("font-size: 11px; color: #94A3B8;")
+        self.desc_lbl.setStyleSheet("font-size: 11px;")
         self.desc_lbl.setWordWrap(True)
         layout.addWidget(self.desc_lbl)
 
@@ -157,45 +164,7 @@ class TariffAgreementDialog(QDialog):
         self.all_rules = rules
         self.selected_agreement = None
 
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #0A1628;
-            }
-            QWidget {
-                background-color: transparent;
-                color: #E2E8F0;
-            }
-            QLineEdit {
-                background-color: #0D2147;
-                border: 1px solid #1565C0;
-                border-radius: 6px;
-                padding: 8px 12px;
-                color: #E2E8F0;
-                font-size: 13px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #42A5F5;
-            }
-            QListWidget {
-                background-color: #0D1F3C;
-                border: 1px solid #1565C0;
-                border-radius: 8px;
-                color: #E2E8F0;
-                outline: none;
-            }
-            QListWidget::item {
-                padding: 12px 16px;
-                border-bottom: 1px solid #1A3A5C;
-            }
-            QListWidget::item:hover {
-                background-color: #1A3A5C;
-            }
-            QListWidget::item:selected {
-                background-color: #0057A8;
-                color: #FFFFFF;
-                font-weight: bold;
-            }
-        """)
+        self.setObjectName("dialog")
 
         # Categorize rules
         self.grouped_rules = self._group_rules(category_title, rules)
@@ -249,7 +218,7 @@ class TariffAgreementDialog(QDialog):
         # Header
         hdr_layout = QHBoxLayout()
         title_lbl = QLabel(f"📂  {self.category_title} Browser")
-        title_lbl.setStyleSheet("color: #FFFFFF; font-size: 18px; font-weight: bold;")
+        title_lbl.setStyleSheet("font-size: 18px; font-weight: bold;")
         hdr_layout.addWidget(title_lbl)
         hdr_layout.addStretch()
 
@@ -269,7 +238,7 @@ class TariffAgreementDialog(QDialog):
         left_panel = QVBoxLayout()
         left_panel.setSpacing(8)
         list_lbl = QLabel("SELECT AGREEMENT")
-        list_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;")
+        list_lbl.setStyleSheet("font-size: 10px; font-weight: 700; letter-spacing: 1px;")
         left_panel.addWidget(list_lbl)
 
         self.agreement_list = QListWidget()
@@ -292,12 +261,12 @@ class TariffAgreementDialog(QDialog):
 
         table_hdr_layout = QHBoxLayout()
         self.table_lbl = QLabel("TARIFF RULES")
-        self.table_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1px;")
+        self.table_lbl.setStyleSheet("font-size: 10px; font-weight: 700; letter-spacing: 1px;")
         table_hdr_layout.addWidget(self.table_lbl)
         table_hdr_layout.addStretch()
 
         self.count_lbl = QLabel("0 rules shown")
-        self.count_lbl.setStyleSheet("color: #4A6FA5; font-size: 11px;")
+        self.count_lbl.setStyleSheet("font-size: 11px;")
         table_hdr_layout.addWidget(self.count_lbl)
         right_panel.addLayout(table_hdr_layout)
 
@@ -316,14 +285,6 @@ class TariffAgreementDialog(QDialog):
         self.tariff_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tariff_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tariff_table.verticalHeader().setVisible(False)
-        self.tariff_table.setStyleSheet(
-            "QTableWidget { gridline-color: #1E3A5F; alternate-background-color: #071426; "
-            "background-color: #030D1A; color: #E2E8F0; font-size: 12px; } "
-            "QHeaderView::section { background-color: #0A1929; color: #90CAF9; "
-            "font-weight: 700; font-size: 11px; padding: 6px; border: none; "
-            "border-bottom: 2px solid #1E3A5F; } "
-            "QTableWidget::item:selected { background-color: #0057A8; color: #FFFFFF; }"
-        )
         right_panel.addWidget(self.tariff_table)
         content_layout.addLayout(right_panel, stretch=1)
         main_layout.addLayout(content_layout, stretch=1)
@@ -333,22 +294,12 @@ class TariffAgreementDialog(QDialog):
 
         self.export_btn = QPushButton("📥 Export Agreement CSV")
         self.export_btn.setObjectName("btn_secondary")
-        self.export_btn.setStyleSheet(
-            "QPushButton { background-color: #1B4332; color: #6EE7B7; font-weight: bold; "
-            "padding: 8px 16px; border-radius: 4px; border: 1px solid #6EE7B7; font-size: 12px; }"
-            "QPushButton:hover { background-color: #065F46; }"
-        )
         self.export_btn.setCursor(Qt.PointingHandCursor)
         self.export_btn.clicked.connect(self._export_agreement_csv)
         footer_layout.addWidget(self.export_btn)
 
         self.export_all_btn = QPushButton("📥 Export All Category CSV")
         self.export_all_btn.setObjectName("btn_secondary")
-        self.export_all_btn.setStyleSheet(
-            "QPushButton { background-color: #1E3A5F; color: #90CAF9; font-weight: bold; "
-            "padding: 8px 16px; border-radius: 4px; border: 1px solid #90CAF9; font-size: 12px; }"
-            "QPushButton:hover { background-color: #1D4ED8; }"
-        )
         self.export_all_btn.setCursor(Qt.PointingHandCursor)
         self.export_all_btn.clicked.connect(self._export_all_csv)
         footer_layout.addWidget(self.export_all_btn)
@@ -357,11 +308,6 @@ class TariffAgreementDialog(QDialog):
 
         close_btn = QPushButton("Close")
         close_btn.setObjectName("btn_primary")
-        close_btn.setStyleSheet(
-            "QPushButton { background-color: #0057A8; color: #FFFFFF; font-weight: bold; "
-            "padding: 8px 20px; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #1976D2; }"
-        )
         close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.clicked.connect(self.accept)
         footer_layout.addWidget(close_btn)
@@ -500,24 +446,15 @@ class CrawlerPage(QWidget):
         # ── Header ─────────────────────────────────────
         header = QHBoxLayout()
         title = QLabel("🌐  Web Crawler & Knowledge Base")
-        title.setStyleSheet("color: #FFFFFF; font-size: 20px; font-weight: 800;")
+        title.setObjectName("page_title")
+        title.setStyleSheet("font-size: 20px; font-weight: 800;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
 
         # ── Warning Notice Banner (for Trade Analysts) ──
         self.notice_banner = QLabel("⚠️  Web Crawler management is restricted to Administrators. You have read-only access (Search & Export) to the Tariff Knowledge Base.")
-        self.notice_banner.setStyleSheet("""
-            QLabel {
-                background-color: #1A2E40;
-                color: #93C5FD;
-                border: 1px solid #2563EB;
-                border-radius: 8px;
-                padding: 12px 16px;
-                font-weight: 600;
-                font-size: 13px;
-            }
-        """)
+        self.notice_banner.setObjectName("notice_banner")
         self.notice_banner.setWordWrap(True)
         self.notice_banner.setVisible(False)
         layout.addWidget(self.notice_banner)
@@ -530,8 +467,9 @@ class CrawlerPage(QWidget):
         ctrl_layout.setContentsMargins(20, 18, 20, 18)
 
         ctrl_title = QLabel("TARIFF DOCUMENT CRAWLER")
+        ctrl_title.setObjectName("section_title")
         ctrl_title.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         ctrl_layout.addWidget(ctrl_title)
 
@@ -541,7 +479,7 @@ class CrawlerPage(QWidget):
             "or a Tariff Schedule PDF (e.g. from MITI Malaysia or USITC) along with the Agreement name (e.g. MJEPA). "
             "The system will crawl the source, extract all HS codes, descriptions, and tariff rates, and save them to the database."
         )
-        self.tip_lbl.setStyleSheet("color: #94A3B8; font-size: 11px; line-height: 1.4;")
+        self.tip_lbl.setStyleSheet("font-size: 11px; line-height: 1.4;")
         self.tip_lbl.setWordWrap(True)
         ctrl_layout.addWidget(self.tip_lbl)
 
@@ -552,16 +490,14 @@ class CrawlerPage(QWidget):
         self.custom_url_input = QLineEdit()
         self.custom_url_input.setPlaceholderText("Enter website URL or direct PDF link (e.g. https://fta.miti.gov.my/pdf/MJEPA_Tariff_Schedule.pdf)")
         self.custom_url_input.setStyleSheet(
-            "QLineEdit { background-color: #030D1A; color: #FFFFFF; border: 1px solid #4A6FA5; "
-            "padding: 10px; border-radius: 6px; font-size: 12px; }"
+            "padding: 10px; font-size: 12px;"
         )
 
         self.custom_fta_input = QLineEdit()
         self.custom_fta_input.setPlaceholderText("Agreement Name (e.g. MJEPA)")
         self.custom_fta_input.setMaximumWidth(220)
         self.custom_fta_input.setStyleSheet(
-            "QLineEdit { background-color: #030D1A; color: #FFFFFF; border: 1px solid #4A6FA5; "
-            "padding: 10px; border-radius: 6px; font-size: 12px; }"
+            "padding: 10px; font-size: 12px;"
         )
 
         form_row.addWidget(self.custom_url_input, stretch=3)
@@ -572,7 +508,7 @@ class CrawlerPage(QWidget):
         status_row = QHBoxLayout()
         
         self.last_run_label = QLabel(f"⏱️  Last Run: {self._last_run}")
-        self.last_run_label.setStyleSheet("color: #4A6FA5; font-size: 11px;")
+        self.last_run_label.setStyleSheet("font-size: 11px;")
         status_row.addWidget(self.last_run_label)
         
         self.progress_bar = QProgressBar()
@@ -621,7 +557,7 @@ class CrawlerPage(QWidget):
         # ── Log Output ──────────────────────────────────
         self.log_label = QLabel("REAL-TIME LOG OUTPUT")
         self.log_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         layout.addWidget(self.log_label)
 
@@ -634,9 +570,8 @@ class CrawlerPage(QWidget):
         self.log_output.setReadOnly(True)
         self.log_output.setMaximumHeight(200)
         self.log_output.setStyleSheet(
-            "QTextEdit { background-color: #030D1A; color: #22D3EE; "
-            "font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; "
-            "border: none; padding: 10px; }"
+            "font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 12px; "
+            "border: none; padding: 10px;"
         )
         self.log_output.setPlaceholderText("Crawler log output will appear here...")
 
@@ -654,7 +589,7 @@ class CrawlerPage(QWidget):
         # ── FTA Agreements Classification ────────────────
         self.fta_label = QLabel("TRADE AGREEMENTS & FTAS CLASSIFICATION")
         self.fta_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px; margin-top: 10px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px; margin-top: 10px;"
         )
         layout.addWidget(self.fta_label)
 
@@ -698,10 +633,10 @@ class CrawlerPage(QWidget):
         kb_header = QHBoxLayout()
         kb_label = QLabel("TARIFF KNOWLEDGE BASE")
         kb_label.setStyleSheet(
-            "color: #90CAF9; font-size: 11px; font-weight: 700; letter-spacing: 2px;"
+            "font-size: 11px; font-weight: 700; letter-spacing: 2px;"
         )
         self.kb_count_label = QLabel("0 rules")
-        self.kb_count_label.setStyleSheet("color: #4A6FA5; font-size: 11px;")
+        self.kb_count_label.setStyleSheet("font-size: 11px;")
         kb_header.addWidget(kb_label)
         kb_header.addStretch()
         kb_header.addWidget(self.kb_count_label)
@@ -714,18 +649,14 @@ class CrawlerPage(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍  Search HS code, description, FTA...")
         self.search_input.setStyleSheet(
-            "QLineEdit { background-color: #030D1A; color: #FFFFFF; border: 1px solid #4A6FA5; "
-            "padding: 6px 10px; border-radius: 4px; font-size: 12px; }"
+            "padding: 6px 10px; font-size: 12px;"
         )
         self.search_input.textChanged.connect(self._filter_tariff_table)
 
         self.origin_filter = QComboBox()
         self.origin_filter.setMinimumWidth(140)
         self.origin_filter.setStyleSheet(
-            "QComboBox { background-color: #030D1A; color: #FFFFFF; border: 1px solid #4A6FA5; "
-            "padding: 5px 8px; border-radius: 4px; font-size: 12px; }"
-            "QComboBox QAbstractItemView { background-color: #0A1929; color: #FFFFFF; "
-            "selection-background-color: #0057A8; }"
+            "padding: 5px 8px; font-size: 12px;"
         )
         self.origin_filter.addItem("All Origins")
         self.origin_filter.currentIndexChanged.connect(self._filter_tariff_table)
@@ -733,41 +664,21 @@ class CrawlerPage(QWidget):
         export_btn = QPushButton("📥 Export CSV")
         export_btn.setObjectName("btn_secondary")
         export_btn.setCursor(Qt.PointingHandCursor)
-        export_btn.setStyleSheet(
-            "QPushButton { background-color: #1B4332; color: #6EE7B7; font-weight: bold; "
-            "padding: 6px 14px; border-radius: 4px; border: 1px solid #6EE7B7; font-size: 12px; }"
-            "QPushButton:hover { background-color: #065F46; }"
-        )
         export_btn.clicked.connect(self._export_csv)
 
         self.delete_btn = QPushButton("🗑 Delete Selected")
         self.delete_btn.setObjectName("btn_danger")
         self.delete_btn.setCursor(Qt.PointingHandCursor)
-        self.delete_btn.setStyleSheet(
-            "QPushButton { background-color: #450A0A; color: #FCA5A5; font-weight: bold; "
-            "padding: 6px 14px; border-radius: 4px; border: 1px solid #FCA5A5; font-size: 12px; }"
-            "QPushButton:hover { background-color: #7F1D1D; }"
-        )
         self.delete_btn.clicked.connect(self._delete_selected_rules)
 
         self.clear_crawled_btn = QPushButton("🗑 Clear Crawled Data")
         self.clear_crawled_btn.setObjectName("btn_danger")
         self.clear_crawled_btn.setCursor(Qt.PointingHandCursor)
-        self.clear_crawled_btn.setStyleSheet(
-            "QPushButton { background-color: #7A1C1C; color: #FCA5A5; font-weight: bold; "
-            "padding: 6px 14px; border-radius: 4px; border: 1px solid #EF4444; font-size: 12px; }"
-            "QPushButton:hover { background-color: #B91C1C; }"
-        )
         self.clear_crawled_btn.clicked.connect(self._delete_all_crawled_rules)
 
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.setObjectName("btn_secondary")
         refresh_btn.setCursor(Qt.PointingHandCursor)
-        refresh_btn.setStyleSheet(
-            "QPushButton { background-color: #1E3A5F; color: #90CAF9; font-weight: bold; "
-            "padding: 6px 14px; border-radius: 4px; border: 1px solid #90CAF9; font-size: 12px; }"
-            "QPushButton:hover { background-color: #1D4ED8; }"
-        )
         refresh_btn.clicked.connect(self._load_tariff_table)
 
         toolbar.addWidget(self.search_input, stretch=3)
@@ -799,14 +710,6 @@ class CrawlerPage(QWidget):
         self.tariff_table.setShowGrid(True)
         self.tariff_table.setAlternatingRowColors(True)
         self.tariff_table.setSortingEnabled(True)
-        self.tariff_table.setStyleSheet(
-            "QTableWidget { gridline-color: #1E3A5F; alternate-background-color: #071426; "
-            "background-color: #030D1A; color: #E2E8F0; font-size: 12px; } "
-            "QHeaderView::section { background-color: #0A1929; color: #90CAF9; "
-            "font-weight: 700; font-size: 11px; padding: 6px; border: none; "
-            "border-bottom: 2px solid #1E3A5F; letter-spacing: 1px; } "
-            "QTableWidget::item:selected { background-color: #0057A8; color: #FFFFFF; }"
-        )
         layout.addWidget(self.tariff_table)
         self.tariff_table.setMinimumHeight(450)
 

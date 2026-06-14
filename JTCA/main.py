@@ -70,7 +70,7 @@ from PySide6.QtWidgets import QApplication, QSplashScreen, QMessageBox
 from PySide6.QtCore import Qt, QTimer, QThread, Signal as QtSignal
 from PySide6.QtGui import QFont, QPixmap, QColor, QPainter
 
-from ui.main_window import MainWindow, GLOBAL_STYLE
+from ui.main_window import MainWindow
 from ui.dashboard import DashboardPage
 from ui.shipments_list import ShipmentsListPage
 from ui.crawler_page import CrawlerPage
@@ -216,11 +216,12 @@ def main():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("Jabil")
 
-    # Apply global stylesheet
-    app.setStyleSheet(GLOBAL_STYLE)
+    # Apply dynamic stylesheet via MainWindow initialization below
 
-    # Default font
-    default_font = QFont("Segoe UI", 10)
+    # Default font - Inter with fallback
+    default_font = QFont("Inter")
+    default_font.setFamilies(["Inter", "Segoe UI", "Arial", "sans-serif"])
+    default_font.setPixelSize(13)
     app.setFont(default_font)
 
     # Splash screen
@@ -248,6 +249,8 @@ def main():
     # ── Pages ──────────────────────────────────
     dashboard = DashboardPage()
     shipments_list = ShipmentsListPage()
+    from ui.case_studies_page import CaseStudiesPage
+    case_studies = CaseStudiesPage()
     crawler = CrawlerPage()
     reports = ReportsPage()
     shipment_view = ShipmentViewPage()
@@ -255,15 +258,16 @@ def main():
     # Add pages to stack (matches sidebar nav order)
     window.add_page(dashboard)       # Index 0: Dashboard
     window.add_page(shipments_list)  # Index 1: Shipments
-    window.add_page(crawler)         # Index 2: Crawler
-    window.add_page(reports)         # Index 3: Reports
-    window.add_page(shipment_view)   # Index 4: Shipment Detail (hidden from nav)
+    window.add_page(case_studies)    # Index 2: Case Studies
+    window.add_page(crawler)         # Index 3: Crawler
+    window.add_page(reports)         # Index 4: Reports
+    window.add_page(shipment_view)   # Index 5: Shipment Detail (hidden from nav)
 
     # ── Navigation Wiring ──────────────────────
     def open_shipment(shipment_data: dict):
         """Navigate to shipment detail view."""
         shipment_view.load_shipment(shipment_data)
-        window.navigate_to(4)
+        window.navigate_to(5)
 
     def back_from_shipment():
         """Return to previous page (shipments list or dashboard)."""
@@ -288,9 +292,14 @@ def main():
 
     def _on_rag_status(msg: str):
         logger.info(f"[RAG] {msg}")
+        window.set_ai_status("amber", f"RAG: {msg}")
 
     def _on_rag_done(success: bool, msg: str):
         logger.info(f"[RAG] {msg}")
+        if success:
+            window.set_ai_status("green", "AI Model Ready")
+        else:
+            window.set_ai_status("red", f"RAG Offline: {msg}")
         # Refresh crawler page count
         try:
             crawler._load_tariff_table()
