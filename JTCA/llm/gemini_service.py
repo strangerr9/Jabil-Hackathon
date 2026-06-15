@@ -310,7 +310,7 @@ def get_tariff_recommendation(
             config=types.GenerateContentConfig(
                 temperature=0.2,
                 top_p=0.8,
-                max_output_tokens=1024,
+                max_output_tokens=2048,
                 response_mime_type="application/json",
                 response_schema=TariffRecommendation,
             ),

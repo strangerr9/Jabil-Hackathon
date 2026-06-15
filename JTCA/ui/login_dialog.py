@@ -16,27 +16,15 @@ class RoleCard(QFrame):
     """Clickable, visual card representing a user role."""
     clicked = Signal(str)
 
-    def __init__(self, role_id: str, icon: str, title: str, description: str, theme_color: str, parent=None):
+    def __init__(self, role_id: str, icon: str, title: str, description: str, theme_color: str, parent=None, theme: str = "dark"):
         super().__init__(parent)
         self.role_id = role_id
         self.theme_color = theme_color
+        self.theme = theme
         self.selected = False
         self.setCursor(Qt.PointingHandCursor)
         self.setMinimumSize(220, 160)
         self.setObjectName("role_card")
-
-        self.setStyleSheet(f"""
-            QFrame#role_card {{
-                background-color: #0D1F3C;
-                border: 2px solid #1565C0;
-                border-radius: 12px;
-                padding: 16px;
-            }}
-            QFrame#role_card:hover {{
-                border-color: {theme_color};
-                background-color: #1A3A5C;
-            }}
-        """)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
@@ -47,11 +35,9 @@ class RoleCard(QFrame):
         self.icon_lbl.setAlignment(Qt.AlignCenter)
 
         self.title_lbl = QLabel(title)
-        self.title_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: #FFFFFF;")
         self.title_lbl.setAlignment(Qt.AlignCenter)
 
         self.desc_lbl = QLabel(description)
-        self.desc_lbl.setStyleSheet("font-size: 11px; color: #90CAF9;")
         self.desc_lbl.setAlignment(Qt.AlignCenter)
         self.desc_lbl.setWordWrap(True)
 
@@ -59,30 +45,48 @@ class RoleCard(QFrame):
         layout.addWidget(self.title_lbl)
         layout.addWidget(self.desc_lbl)
 
+        self._apply_theme_style()
+
+    def _apply_theme_style(self):
+        if self.theme == "light":
+            bg_color = "#EEF2F8"
+            border_color = "#D0D9E8"
+            hover_bg = "#E1E8F2"
+            text_color = "#0D1B2A"
+            desc_color = "#4A5568"
+        else: # dark
+            bg_color = "#0D1F3C"
+            border_color = "#1565C0"
+            hover_bg = "#1A3A5C"
+            text_color = "#FFFFFF"
+            desc_color = "#90CAF9"
+
+        if self.selected:
+            border_style = f"3px solid {self.theme_color}"
+            current_bg = hover_bg
+        else:
+            border_style = f"2px solid {border_color}"
+            current_bg = bg_color
+
+        self.setStyleSheet(f"""
+            QFrame#role_card {{
+                background-color: {current_bg};
+                border: {border_style};
+                border-radius: 12px;
+                padding: {15 if self.selected else 16}px;
+            }}
+            QFrame#role_card:hover {{
+                border-color: {self.theme_color};
+                background-color: {hover_bg};
+            }}
+        """)
+
+        self.title_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {text_color};")
+        self.desc_lbl.setStyleSheet(f"font-size: 11px; color: {desc_color};")
+
     def set_selected(self, selected: bool):
         self.selected = selected
-        if selected:
-            self.setStyleSheet(f"""
-                QFrame#role_card {{
-                    background-color: #1A3A5C;
-                    border: 3px solid {self.theme_color};
-                    border-radius: 12px;
-                    padding: 15px;
-                }}
-            """)
-        else:
-            self.setStyleSheet(f"""
-                QFrame#role_card {{
-                    background-color: #0D1F3C;
-                    border: 2px solid #1565C0;
-                    border-radius: 12px;
-                    padding: 16px;
-                }}
-                QFrame#role_card:hover {{
-                    border-color: {self.theme_color};
-                    background-color: #1A3A5C;
-                }}
-            """)
+        self._apply_theme_style()
 
     def mousePressEvent(self, event):
         self.clicked.emit(self.role_id)
@@ -92,54 +96,104 @@ class RoleCard(QFrame):
 class LoginDialog(QDialog):
     """Beautiful custom role selection & login modal dialog."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, theme: str = "dark"):
         super().__init__(parent)
         self.setWindowTitle("Sign In — JTCA Compliance Assistant")
         self.setMinimumSize(560, 480)
         self.setModal(True)
         self.selected_role = None
 
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #0A1628;
-            }
-            QWidget {
-                background-color: transparent;
-                color: #E2E8F0;
-            }
-            QLineEdit {
-                background-color: #0D2147;
-                border: 1px solid #1565C0;
-                border-radius: 6px;
-                padding: 10px 14px;
-                color: #E2E8F0;
-                font-size: 13px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #42A5F5;
-            }
-            #sign_in_btn {
-                background-color: #0057A8;
-                color: #FFFFFF;
-                border: none;
-                border-radius: 8px;
-                padding: 12px 24px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            #sign_in_btn:hover {
-                background-color: #1976D2;
-            }
-            #sign_in_btn:pressed {
-                background-color: #003D7A;
-            }
-            #sign_in_btn:disabled {
-                background-color: #102A45;
-                color: #4A6FA5;
-                border: 1px solid #1565C0;
-            }
-        """)
+        # Determine theme from parent or default
+        self.theme = theme
+        if parent and hasattr(parent, "_current_theme"):
+            self.theme = parent._current_theme
+
+        self._apply_dialog_style()
         self._setup_ui()
+
+    def _apply_dialog_style(self):
+        if self.theme == "light":
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: transparent;
+                    color: #0D1B2A;
+                }
+                QDialog {
+                    background-color: #F7F9FC;
+                }
+                QLineEdit {
+                    background-color: #FFFFFF;
+                    border: 1px solid #D0D9E8;
+                    border-radius: 6px;
+                    padding: 10px 14px;
+                    color: #0D1B2A;
+                    font-size: 13px;
+                }
+                QLineEdit:focus {
+                    border: 2px solid #2196F3;
+                }
+                #sign_in_btn {
+                    background-color: #0A3D91;
+                    color: #FFFFFF;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 12px 24px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                #sign_in_btn:hover {
+                    background-color: #1565C0;
+                }
+                #sign_in_btn:pressed {
+                    background-color: #002B66;
+                }
+                #sign_in_btn:disabled {
+                    background-color: #EEF2F8;
+                    color: #8A9BB0;
+                    border: 1px solid #D0D9E8;
+                }
+            """)
+        else: # dark
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: transparent;
+                    color: #E2E8F0;
+                }
+                QDialog {
+                    background-color: #0A1628;
+                }
+                QLineEdit {
+                    background-color: #0D2147;
+                    border: 1px solid #1565C0;
+                    border-radius: 6px;
+                    padding: 10px 14px;
+                    color: #E2E8F0;
+                    font-size: 13px;
+                }
+                QLineEdit:focus {
+                    border: 2px solid #42A5F5;
+                }
+                #sign_in_btn {
+                    background-color: #0057A8;
+                    color: #FFFFFF;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 12px 24px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                #sign_in_btn:hover {
+                    background-color: #1976D2;
+                }
+                #sign_in_btn:pressed {
+                    background-color: #003D7A;
+                }
+                #sign_in_btn:disabled {
+                    background-color: #102A45;
+                    color: #4A6FA5;
+                    border: 1px solid #1565C0;
+                }
+            """)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -152,11 +206,9 @@ class LoginDialog(QDialog):
         header_layout.setAlignment(Qt.AlignCenter)
 
         jabil_lbl = QLabel("JABIL")
-        jabil_lbl.setStyleSheet("color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: 4px;")
         jabil_lbl.setAlignment(Qt.AlignCenter)
 
         subtitle_lbl = QLabel("TradeAI Compliance Assistant")
-        subtitle_lbl.setStyleSheet("color: #42A5F5; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;")
         subtitle_lbl.setAlignment(Qt.AlignCenter)
 
         header_layout.addWidget(jabil_lbl)
@@ -165,7 +217,6 @@ class LoginDialog(QDialog):
 
         # Prompt text
         prompt_lbl = QLabel("SELECT YOUR SYSTEM ROLE")
-        prompt_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;")
         prompt_lbl.setAlignment(Qt.AlignCenter)
         layout.addWidget(prompt_lbl)
 
@@ -178,14 +229,16 @@ class LoginDialog(QDialog):
             icon="🛡️",
             title="Administrator",
             description="Manage knowledge base, configure crawler, view reports and full logs.",
-            theme_color="#42A5F5"
+            theme_color="#42A5F5",
+            theme=self.theme
         )
         self.analyst_card = RoleCard(
             role_id="Trade Analyst",
             icon="📋",
             title="Trade Analyst",
             description="Upload incoming supplier invoices, review HS codes, and approve/reject shipments.",
-            theme_color="#059669"
+            theme_color="#059669",
+            theme=self.theme
         )
 
         cards_layout.addWidget(self.admin_card)
@@ -198,7 +251,6 @@ class LoginDialog(QDialog):
 
         # ── Name Input ──────────────────────────────────
         name_lbl = QLabel("ENTER YOUR NAME")
-        name_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;")
         layout.addWidget(name_lbl)
 
         self.name_input = QLineEdit()
@@ -213,22 +265,6 @@ class LoginDialog(QDialog):
         btn_layout.setSpacing(12)
 
         self.close_btn = QPushButton("Exit")
-        self.close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #B0C4DE;
-                border: 1px solid #1E3A5F;
-                border-radius: 8px;
-                padding: 11px 20px;
-                font-size: 13px;
-                font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #450A0A;
-                color: #F87171;
-                border-color: #EF4444;
-            }
-        """)
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.clicked.connect(self.reject)
 
@@ -237,6 +273,50 @@ class LoginDialog(QDialog):
         self.sign_in_btn.setCursor(Qt.PointingHandCursor)
         self.sign_in_btn.setEnabled(False)
         self.sign_in_btn.clicked.connect(self._on_sign_in)
+
+        # Set specific text/button styles based on the theme
+        if self.theme == "light":
+            jabil_lbl.setStyleSheet("color: #0A3D91; font-size: 26px; font-weight: 800; letter-spacing: 4px;")
+            subtitle_lbl.setStyleSheet("color: #1565C0; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;")
+            prompt_lbl.setStyleSheet("color: #4A5568; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;")
+            name_lbl.setStyleSheet("color: #4A5568; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;")
+            self.close_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: #4A5568;
+                    border: 1px solid #D0D9E8;
+                    border-radius: 8px;
+                    padding: 11px 20px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                QPushButton:hover {
+                    background-color: #FEE2E2;
+                    color: #EF4444;
+                    border-color: #EF4444;
+                }
+            """)
+        else: # dark
+            jabil_lbl.setStyleSheet("color: #FFFFFF; font-size: 26px; font-weight: 800; letter-spacing: 4px;")
+            subtitle_lbl.setStyleSheet("color: #42A5F5; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;")
+            prompt_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;")
+            name_lbl.setStyleSheet("color: #90CAF9; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;")
+            self.close_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: #B0C4DE;
+                    border: 1px solid #1E3A5F;
+                    border-radius: 8px;
+                    padding: 11px 20px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                QPushButton:hover {
+                    background-color: #450A0A;
+                    color: #F87171;
+                    border-color: #EF4444;
+                }
+            """)
 
         btn_layout.addWidget(self.close_btn)
         btn_layout.addWidget(self.sign_in_btn, stretch=1)

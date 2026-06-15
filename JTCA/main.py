@@ -249,8 +249,6 @@ def main():
     # ── Pages ──────────────────────────────────
     dashboard = DashboardPage()
     shipments_list = ShipmentsListPage()
-    from ui.case_studies_page import CaseStudiesPage
-    case_studies = CaseStudiesPage()
     crawler = CrawlerPage()
     reports = ReportsPage()
     shipment_view = ShipmentViewPage()
@@ -258,16 +256,15 @@ def main():
     # Add pages to stack (matches sidebar nav order)
     window.add_page(dashboard)       # Index 0: Dashboard
     window.add_page(shipments_list)  # Index 1: Shipments
-    window.add_page(case_studies)    # Index 2: Case Studies
-    window.add_page(crawler)         # Index 3: Crawler
-    window.add_page(reports)         # Index 4: Reports
-    window.add_page(shipment_view)   # Index 5: Shipment Detail (hidden from nav)
+    window.add_page(crawler)         # Index 2: Crawler
+    window.add_page(reports)         # Index 3: Reports
+    window.add_page(shipment_view)   # Index 4: Shipment Detail (hidden from nav)
 
     # ── Navigation Wiring ──────────────────────
     def open_shipment(shipment_data: dict):
         """Navigate to shipment detail view."""
         shipment_view.load_shipment(shipment_data)
-        window.navigate_to(5)
+        window.navigate_to(4)
 
     def back_from_shipment():
         """Return to previous page (shipments list or dashboard)."""

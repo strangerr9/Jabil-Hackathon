@@ -81,13 +81,13 @@ def get_theme_stylesheet(theme_name: str) -> str:
         box-sizing: border-box;
     }}
 
-    QMainWindow, QDialog {{
-        background-color: {colors["bg_primary"]};
-    }}
-
     QWidget {{
         background-color: transparent;
         color: {colors["text_primary"]};
+    }}
+
+    QMainWindow, QDialog, QMessageBox, QFileDialog, QProgressDialog {{
+        background-color: {colors["bg_primary"]};
     }}
 
     QLabel {{
@@ -221,6 +221,26 @@ def get_theme_stylesheet(theme_name: str) -> str:
     }}
 
     /* ─── Buttons ───────────────────────────────── */
+    QMessageBox QPushButton, QFileDialog QPushButton, QProgressDialog QPushButton {{
+        background-color: {colors["bg_panel"]};
+        color: {colors["text_primary"]};
+        border: 1px solid {colors["border"]};
+        border-radius: 6px;
+        padding: 6px 16px;
+        font-size: 12px;
+        font-weight: 600;
+        min-width: 80px;
+    }}
+
+    QMessageBox QPushButton:hover, QFileDialog QPushButton:hover, QProgressDialog QPushButton:hover {{
+        background-color: {colors["border"]};
+        color: {colors["text_primary"]};
+    }}
+
+    QMessageBox QPushButton:pressed, QFileDialog QPushButton:pressed, QProgressDialog QPushButton:pressed {{
+        background-color: {colors["bg_primary"]};
+    }}
+
     #btn_primary {{
         background-color: {colors["accent_primary"]};
         color: #FFFFFF;
@@ -816,7 +836,6 @@ class MainWindow(QMainWindow):
         nav_items = [
             ("🏠", "Dashboard"),
             ("📋", "Shipments"),
-            ("📚", "Case Studies"),
             ("🌐", "Web Crawler"),
             ("📊", "Reports"),
         ]
@@ -925,10 +944,9 @@ class MainWindow(QMainWindow):
         breadcrumbs = {
             0: "Dashboard / Overview",
             1: "Shipments / All Shipments",
-            2: "Case Studies / Catalog",
-            3: "Web Crawler / Tariff Knowledge",
-            4: "Reports / Analytics & Logs",
-            5: "Shipments / Shipment Details"
+            2: "Web Crawler / Tariff Knowledge",
+            3: "Reports / Analytics & Logs",
+            4: "Shipments / Shipment Details"
         }
         self.breadcrumb_lbl.setText(breadcrumbs.get(index, "JTCA"))
         self.page_changed.emit(index)
@@ -1110,7 +1128,7 @@ class MainWindow(QMainWindow):
             SessionManager().logout()
             self.hide()
             
-            login_dlg = LoginDialog()
+            login_dlg = LoginDialog(parent=self)
             if login_dlg.exec() == LoginDialog.Accepted:
                 self.apply_permissions()
                 self.navigate_to(0)

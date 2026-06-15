@@ -528,7 +528,18 @@ def get_recent_audit_log(limit: int = 200) -> list[tuple]:
                 """,
                 (limit,),
             )
-            return cur.fetchall()
+            return [
+                (
+                    row.get("timestamp"),
+                    row.get("shipment_id"),
+                    row.get("action"),
+                    row.get("ai_recommendation"),
+                    row.get("human_decision"),
+                    row.get("reviewer_name"),
+                    row.get("notes")
+                )
+                for row in cur.fetchall()
+            ]
     finally:
         conn.close()
 
