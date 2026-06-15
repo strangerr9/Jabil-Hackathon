@@ -32,6 +32,59 @@ except ImportError:
 # ─────────────────────────────────────────────
 # HS Code / Tariff Rate Parsers
 # ─────────────────────────────────────────────
+def _parse_malaysia_tariff_rate(rate_str: str, staging_cat: str) -> float:
+    """Parse Malaysia MFN import duty rate and staging category to tariff percentage."""
+    staging_cat = staging_cat.strip().upper()
+    rate_str = rate_str.strip()
+    
+    # 1. Check staging category first
+    if staging_cat in ("A", "EIF"):
+        return 0.0
+    if staging_cat == "B":
+        return 2.0
+    if staging_cat == "C":
+        return 3.0
+    if staging_cat in ("D", "R5"):
+        return 5.0
+    if staging_cat in ("R10", "R10A"):
+        return 10.0
+    if staging_cat == "R15":
+        return 15.0
+        
+    # 2. If it's TRQ, parse the in-quota percentage
+    if staging_cat == "TRQ":
+        m = re.search(r"In-Quota:\s*(\d+(?:\.\d+)?)%", rate_str, re.IGNORECASE)
+        if m:
+            return float(m.group(1))
+        m = re.search(r"(\d+(?:\.\d+)?)%", rate_str)
+        if m:
+            return float(m.group(1))
+
+    # 3. Parse base rate percent from MFN Import Duty Rate column
+    base_rate_percent = 0.0
+    if re.match(r"^0?\.\d+$", rate_str):
+        try:
+            base_rate_percent = float(rate_str) * 100.0
+        except ValueError:
+            pass
+    elif "%" in rate_str:
+        m = re.search(r"(\d+(?:\.\d+)?)%", rate_str)
+        if m:
+            base_rate_percent = float(m.group(1))
+    elif rate_str.isdigit():
+        base_rate_percent = float(rate_str)
+
+    # Apply staging category logic to base rate
+    if staging_cat == "E5":
+        return base_rate_percent * 0.8
+    elif staging_cat == "E9":
+        return base_rate_percent * (8.0 / 9.0)
+    elif staging_cat == "Z":
+        return base_rate_percent
+        
+    return base_rate_percent
+
+
 def _parse_hs_codes_from_text(
     text: str,
     source_url: str,
@@ -191,25 +244,107 @@ async def _crawl_pdf_url(
             tmp_path = tmp.name
 
         try:
-            log(f"[Crawler] Saved temporary PDF. Extracting text page-by-page...")
-            all_text = []
+            log(f"[Crawler] Saved temporary PDF. Checking document structure...")
+            is_malaysia_schedule = False
+            first_pages_text = ""
             with pdfplumber.open(tmp_path) as pdf:
-                total_pages = len(pdf.pages)
-                for idx, page in enumerate(pdf.pages, 1):
-                    if idx % 10 == 0 or idx == total_pages:
-                        log(f"[Crawler] Extracting page {idx} / {total_pages}...")
-                    page_text = page.extract_text()
-                    if page_text:
-                        all_text.append(page_text)
+                # Check first 5 pages for Malaysia identification strings
+                for i in range(min(5, len(pdf.pages))):
+                    page_text = pdf.pages[i].extract_text() or ""
+                    first_pages_text += page_text
             
-            text = "\n".join(all_text)
-            log(f"[Crawler] PDF extracted {len(text)} characters.")
+            if "tariff schedule of malaysia" in first_pages_text.lower() or "mcdo 2022" in first_pages_text.lower():
+                is_malaysia_schedule = True
+                log("[Crawler] Detected Malaysia Tariff Schedule format. Using table extraction strategy.")
+
+            if is_malaysia_schedule:
+                rules = []
+                now = datetime.now().isoformat()
+                allowed_chapters = {"39", "73", "84", "85", "90"}
+                
+                # Normalize participating countries and FTA name for Malaysia Annex schedule
+                fta_upper = origin.upper().strip()
+                if origin_country and destination_country:
+                    clean_fta_name = origin
+                elif "MALAYSIA" in fta_upper and ("US" in fta_upper or "UNITED STATES" in fta_upper):
+                    origin_country = "USA"
+                    destination_country = "Malaysia"
+                    clean_fta_name = "US-Malaysia FTA"
+                else:
+                    origin_country = "USA"
+                    destination_country = "Malaysia"
+                    clean_fta_name = origin or "Malaysia Tariff Schedule"
+
+                with pdfplumber.open(tmp_path) as pdf:
+                    total_pages = len(pdf.pages)
+                    for idx, page in enumerate(pdf.pages, 1):
+                        if idx % 10 == 0 or idx == total_pages:
+                            log(f"[Crawler] Extracting tables from page {idx} / {total_pages}...")
+                        
+                        tables = page.extract_tables()
+                        if not tables:
+                            continue
+                            
+                        for table in tables:
+                            for row in table:
+                                if len(row) >= 5:
+                                    hs_raw = row[0]
+                                    desc_raw = row[1]
+                                    mfn_raw = row[3]
+                                    staging_raw = row[4]
+                                    
+                                    # We expect HS Code to be 10 digits
+                                    if hs_raw and len(hs_raw.strip()) == 10 and hs_raw.strip().isdigit():
+                                        hs_code_full = hs_raw.strip()
+                                        hs_code_6 = hs_code_full[:6]
+                                        
+                                        # Filter by allowed chapters
+                                        if hs_code_6[:2] not in allowed_chapters:
+                                            continue
+                                            
+                                        description = desc_raw.strip() if desc_raw else ""
+                                        description = re.sub(r"^[\s\-\.]+", "", description)
+                                        description = description.replace("\n", " ").strip()
+                                        
+                                        mfn_rate = mfn_raw if mfn_raw else ""
+                                        staging_cat = staging_raw if staging_raw else ""
+                                        
+                                        tariff_percent = _parse_malaysia_tariff_rate(mfn_rate, staging_cat)
+                                        
+                                        rules.append({
+                                            "hs_code": hs_code_6,
+                                            "product_description": description,
+                                            "origin_country": origin_country,
+                                            "destination_country": destination_country,
+                                            "tariff_percent": tariff_percent,
+                                            "fta_name": clean_fta_name,
+                                            "regulation_source": url,
+                                            "last_updated": now,
+                                        })
+                
+                log(f"[Crawler] Table extraction complete. Extracted {len(rules)} Jabil-focused tariff rules from Malaysia schedule.")
+                return rules
             
-            rules = _parse_hs_codes_from_text(
-                text, url, origin, origin_country=origin_country, destination_country=destination_country
-            )
-            log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF.")
-            return rules
+            else:
+                log(f"[Crawler] Processing PDF page-by-page using text extraction fallback...")
+                all_text = []
+                with pdfplumber.open(tmp_path) as pdf:
+                    total_pages = len(pdf.pages)
+                    for idx, page in enumerate(pdf.pages, 1):
+                        if idx % 10 == 0 or idx == total_pages:
+                            log(f"[Crawler] Extracting page {idx} / {total_pages}...")
+                        page_text = page.extract_text()
+                        if page_text:
+                            all_text.append(page_text)
+                
+                text = "\n".join(all_text)
+                log(f"[Crawler] PDF extracted {len(text)} characters.")
+                
+                rules = _parse_hs_codes_from_text(
+                    text, url, origin, origin_country=origin_country, destination_country=destination_country
+                )
+                log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF.")
+                return rules
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
