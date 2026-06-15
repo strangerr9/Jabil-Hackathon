@@ -26,32 +26,19 @@ except ImportError:
     HAS_CRAWL4AI = False
 
 
-# ─────────────────────────────────────────────
-# Target URLs for Crawling
-# ─────────────────────────────────────────────
-CRAWL_TARGETS = [
-    {
-        "name": "MITI Malaysia FTA",
-        "url": "https://www.miti.gov.my/index.php/pages/view/ftas",
-        "origin": "Malaysia",
-    },
-    {
-        "name": "WTO Tariff Download",
-        "url": "https://www.wto.org/english/tratop_e/tariffs_e/tariff_data_e.htm",
-        "origin": "General",
-    },
-    {
-        "name": "ASEAN Trade Repository",
-        "url": "https://atr.asean.org/",
-        "origin": "ASEAN",
-    },
-]
+
 
 
 # ─────────────────────────────────────────────
 # HS Code / Tariff Rate Parsers
 # ─────────────────────────────────────────────
-def _parse_hs_codes_from_text(text: str, source_url: str, fta_name: str) -> list[dict]:
+def _parse_hs_codes_from_text(
+    text: str,
+    source_url: str,
+    fta_name: str,
+    origin_country: str | None = None,
+    destination_country: str | None = None,
+) -> list[dict]:
     """
     Extract HS codes and tariff percentages from crawled HTML/document text.
     First tries custom LLM-based extraction using Google Gemini,
@@ -59,7 +46,9 @@ def _parse_hs_codes_from_text(text: str, source_url: str, fta_name: str) -> list
     """
     # Map fta_name to participating countries
     fta_upper = fta_name.upper().strip()
-    if "ACFTA" in fta_upper or "ACTFA" in fta_upper or "ASEAN-CHINA" in fta_upper or "ASEAN CHINA" in fta_upper:
+    if origin_country and destination_country:
+        clean_fta_name = fta_name
+    elif "ACFTA" in fta_upper or "ACTFA" in fta_upper or "ASEAN-CHINA" in fta_upper or "ASEAN CHINA" in fta_upper:
         origin_country = "China, ASEAN"
         destination_country = "ASEAN"
         clean_fta_name = "ACFTA"
@@ -84,8 +73,8 @@ def _parse_hs_codes_from_text(text: str, source_url: str, fta_name: str) -> list
             # Overwrite source_url to match crawled portal source
             for r in llm_rules:
                 r["regulation_source"] = source_url
-            allowed_prefixes = {"8542", "8541", "8534", "8536", "8504", "8517", "8471", "8473", "8486"}
-            filtered_llm = [r for r in llm_rules if r.get("hs_code", "")[:4] in allowed_prefixes]
+            allowed_chapters = {"39", "73", "84", "85", "90"}
+            filtered_llm = [r for r in llm_rules if r.get("hs_code", "")[:2] in allowed_chapters]
             logger.info(f"[Crawler] Extracted {len(llm_rules)} rules using Gemini LLM strategy. Filtered to {len(filtered_llm)} Jabil-focused rules.")
             return filtered_llm
     except Exception as e:
@@ -155,8 +144,8 @@ def _parse_hs_codes_from_text(text: str, source_url: str, fta_name: str) -> list
                 "last_updated": now,
             })
 
-    allowed_prefixes = {"8542", "8541", "8534", "8536", "8504", "8517", "8471", "8473", "8486"}
-    filtered_rules = [r for r in rules if r.get("hs_code", "")[:4] in allowed_prefixes]
+    allowed_chapters = {"39", "73", "84", "85", "90"}
+    filtered_rules = [r for r in rules if r.get("hs_code", "")[:2] in allowed_chapters]
     logger.info(f"[Crawler] Regex parsed {len(rules)} rules. Filtered to {len(filtered_rules)} Jabil-focused rules.")
     return filtered_rules
 
@@ -173,6 +162,8 @@ async def _crawl_pdf_url(
     url: str,
     origin: str,
     log_callback: Callable[[str], None] | None = None,
+    origin_country: str | None = None,
+    destination_country: str | None = None,
 ) -> list[dict]:
     """
     Download and extract PDF content directly using requests and pdfplumber.
@@ -214,7 +205,9 @@ async def _crawl_pdf_url(
             text = "\n".join(all_text)
             log(f"[Crawler] PDF extracted {len(text)} characters.")
             
-            rules = _parse_hs_codes_from_text(text, url, origin)
+            rules = _parse_hs_codes_from_text(
+                text, url, origin, origin_country=origin_country, destination_country=destination_country
+            )
             log(f"[Crawler] Extracted {len(rules)} tariff rules from PDF.")
             return rules
         finally:
@@ -230,6 +223,8 @@ async def _crawl_webpage_url(
     url: str,
     origin: str,
     log_callback: Callable[[str], None] | None = None,
+    origin_country: str | None = None,
+    destination_country: str | None = None,
 ) -> list[dict]:
     """Crawl a standard webpage URL and extract tariff rules."""
     def log(msg):
@@ -257,7 +252,9 @@ async def _crawl_webpage_url(
                 return []
 
             text = result.markdown or result.cleaned_html or ""
-            rules = _parse_hs_codes_from_text(text, url, origin)
+            rules = _parse_hs_codes_from_text(
+                text, url, origin, origin_country=origin_country, destination_country=destination_country
+            )
             log(f"[Crawler] Extracted {len(rules)} rules from {url}")
             return rules
 
@@ -273,6 +270,8 @@ async def _crawl_single_url(
     url: str,
     origin: str,
     log_callback: Callable[[str], None] | None = None,
+    origin_country: str | None = None,
+    destination_country: str | None = None,
 ) -> list[dict]:
     """
     Smart dispatcher — detects PDF vs webpage and routes accordingly.
@@ -289,146 +288,23 @@ async def _crawl_single_url(
         return []
 
     if _is_pdf_url(url):
-        return await _crawl_pdf_url(url, origin, log_callback)
-    else:
-        return await _crawl_webpage_url(url, origin, log_callback)
-
-
-async def run_crawler_async(
-    log_callback: Callable[[str], None] | None = None,
-) -> dict:
-    """
-    Run full crawl cycle across all configured targets.
-
-    Pipeline:
-      1. Crawl each target URL
-      2. Dump raw rules → MongoDB (fast, schema-free)
-      3. ETL pipeline: MongoDB → validate → PostgreSQL
-      4. ChromaDB vector store refresh (handled inside ETL)
-
-    Returns:
-        {
-            "rules_found": int,
-            "rules_saved": int,
-            "sources_crawled": int,
-            "errors": list[str]
-        }
-    """
-    def log(msg):
-        logger.info(msg)
-        if log_callback:
-            log_callback(msg)
-
-    if not HAS_CRAWL4AI:
-        log("[Crawler] crawl4ai not installed. Using seed data fallback.")
-        return {
-            "rules_found": 0,
-            "rules_saved": 0,
-            "sources_crawled": 0,
-            "errors": ["crawl4ai is not installed."],
-        }
-
-    # ── MongoDB + ETL imports (graceful degradation) ────────
-    try:
-        from database.mongo_db import (
-            insert_raw_crawls_bulk, start_crawl_run, finish_crawl_run
+        return await _crawl_pdf_url(
+            url, origin, log_callback, origin_country=origin_country, destination_country=destination_country
         )
-        use_mongo = True
-    except Exception as e:
-        log(f"[Crawler] MongoDB unavailable, falling back to direct DB write: {e}")
-        use_mongo = False
-
-    from database.db import insert_tariff_rule
-
-    log("[Crawler] Starting crawl cycle...")
-    all_rules = []
-    errors = []
-
-    # Start a crawl session in MongoDB
-    crawl_run_id = ""
-    if use_mongo:
-        target_urls = [t["url"] for t in CRAWL_TARGETS]
-        crawl_run_id = start_crawl_run(target_urls)
-        log(f"[Crawler] Crawl session started: {crawl_run_id}")
-
-    for target in CRAWL_TARGETS:
-        log(f"[Crawler] Target: {target['name']} ({target['url']})")
-        try:
-            rules = await _crawl_single_url(
-                url=target["url"],
-                origin=target["origin"],
-                log_callback=log_callback,
-            )
-            all_rules.extend(rules)
-
-            # ── Write raw rules to MongoDB ─────────────────
-            if use_mongo and rules:
-                inserted = insert_raw_crawls_bulk(
-                    rules, source_url=target["url"], crawl_run_id=crawl_run_id
-                )
-                log(f"[Crawler] Dumped {inserted} raw rules to MongoDB from {target['name']}.")
-
-        except Exception as e:
-            err = f"Error on {target['name']}: {e}"
-            errors.append(err)
-            log(f"[Crawler] {err}")
-
-    # ── ETL: MongoDB → PostgreSQL ──────────────────────────
-    saved = 0
-    if use_mongo and all_rules:
-        log("[Crawler] Running ETL pipeline: MongoDB -> PostgreSQL...")
-        try:
-            from database.etl_pipeline import run_etl
-            etl_result = run_etl(log_callback=log_callback, refresh_vector_store=True)
-            saved = etl_result["saved"]
-            errors.extend(etl_result["errors"])
-            log(f"[Crawler] ETL complete: {saved} rules saved to PostgreSQL.")
-        except Exception as e:
-            log(f"[Crawler] ETL failed, falling back to direct insert: {e}")
-            errors.append(str(e))
-            # Fallback: write directly to PostgreSQL without MongoDB
-            for rule in all_rules:
-                if insert_tariff_rule(rule):
-                    saved += 1
     else:
-        # No MongoDB — write directly to PostgreSQL
-        for rule in all_rules:
-            if insert_tariff_rule(rule):
-                saved += 1
-        log(f"[Crawler] Saved {saved} / {len(all_rules)} rules directly to PostgreSQL.")
-
-    # Finish crawl session in MongoDB
-    if use_mongo and crawl_run_id:
-        try:
-            finish_crawl_run(crawl_run_id, len(all_rules), saved, errors)
-        except Exception:
-            pass
-
-    log("[Crawler] Crawl cycle complete.")
-    return {
-        "rules_found": len(all_rules),
-        "rules_saved": saved,
-        "sources_crawled": len(CRAWL_TARGETS),
-        "errors": errors,
-    }
+        return await _crawl_webpage_url(
+            url, origin, log_callback, origin_country=origin_country, destination_country=destination_country
+        )
 
 
-def run_crawler_sync(log_callback: Callable[[str], None] | None = None) -> dict:
-    """Synchronous wrapper for async crawler (for use in Qt threads)."""
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(run_crawler_async(log_callback))
-        loop.close()
-        return result
-    except Exception as e:
-        logger.error(f"Crawler sync error: {e}")
-        return {"rules_found": 0, "rules_saved": 0, "sources_crawled": 0, "errors": [str(e)]}
+
 
 
 async def crawl_custom_source_async(
     url: str,
-    origin: str,
+    fta_name: str,
+    origin_country: str,
+    destination_country: str,
     log_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Crawl a custom source URL, dump to MongoDB, then ETL → PostgreSQL."""
@@ -456,7 +332,7 @@ async def crawl_custom_source_async(
 
     from database.db import insert_tariff_rule
 
-    log(f"[Crawler] Starting custom crawl on: {url} (Origin: {origin})")
+    log(f"[Crawler] Starting custom crawl on: {url} (FTA: {fta_name}, Origin: {origin_country}, Destination: {destination_country})")
 
     crawl_run_id = ""
     if use_mongo:
@@ -465,8 +341,10 @@ async def crawl_custom_source_async(
     try:
         rules = await _crawl_single_url(
             url=url,
-            origin=origin,
+            origin=fta_name,
             log_callback=log_callback,
+            origin_country=origin_country,
+            destination_country=destination_country,
         )
     except Exception as e:
         log(f"[Crawler] Custom crawl error: {e}")
@@ -520,14 +398,24 @@ async def crawl_custom_source_async(
 
 def crawl_custom_source_sync(
     url: str,
-    origin: str,
+    fta_name: str,
+    origin_country: str,
+    destination_country: str,
     log_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Synchronous wrapper for custom crawler (for Qt threads)."""
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(crawl_custom_source_async(url, origin, log_callback))
+        result = loop.run_until_complete(
+            crawl_custom_source_async(
+                url=url,
+                fta_name=fta_name,
+                origin_country=origin_country,
+                destination_country=destination_country,
+                log_callback=log_callback,
+            )
+        )
         loop.close()
         return result
     except Exception as e:

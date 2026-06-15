@@ -30,17 +30,21 @@ class CustomCrawlerWorker(QThread):
     finished = Signal(dict)
     error = Signal(str)
 
-    def __init__(self, url: str, fta_name: str):
+    def __init__(self, url: str, fta_name: str, origin_country: str, destination_country: str):
         super().__init__()
         self.url = url
         self.fta_name = fta_name
+        self.origin_country = origin_country
+        self.destination_country = destination_country
 
     def run(self):
         try:
             from crawler.crawl4ai_service import crawl_custom_source_sync
             result = crawl_custom_source_sync(
-                self.url,
-                self.fta_name,
+                url=self.url,
+                fta_name=self.fta_name,
+                origin_country=self.origin_country,
+                destination_country=self.destination_country,
                 log_callback=lambda msg: self.log_message.emit(msg)
             )
             self.finished.emit(result)
@@ -48,20 +52,7 @@ class CustomCrawlerWorker(QThread):
             self.error.emit(str(e))
 
 
-class CrawlerWorker(QThread):
-    """Background thread for web crawling."""
 
-    log_message = Signal(str)
-    finished = Signal(dict)
-    error = Signal(str)
-
-    def run(self):
-        try:
-            from crawler.crawl4ai_service import run_crawler_sync
-            result = run_crawler_sync(log_callback=lambda msg: self.log_message.emit(msg))
-            self.finished.emit(result)
-        except Exception as e:
-            self.error.emit(str(e))
 
 
 class IndexWorker(QThread):
@@ -417,7 +408,6 @@ class CrawlerPage(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._crawler_worker: CrawlerWorker | None = None
         self._index_worker: IndexWorker | None = None
         self._last_run: str = "Never"
         self._setup_ui()
@@ -484,8 +474,11 @@ class CrawlerPage(QWidget):
         ctrl_layout.addWidget(self.tip_lbl)
 
         # Form Layout
-        form_row = QHBoxLayout()
-        form_row.setSpacing(12)
+        form_layout = QVBoxLayout()
+        form_layout.setSpacing(10)
+
+        form_row1 = QHBoxLayout()
+        form_row1.setSpacing(12)
 
         self.custom_url_input = QLineEdit()
         self.custom_url_input.setPlaceholderText("Enter website URL or direct PDF link (e.g. https://fta.miti.gov.my/pdf/MJEPA_Tariff_Schedule.pdf)")
@@ -500,9 +493,30 @@ class CrawlerPage(QWidget):
             "padding: 10px; font-size: 12px;"
         )
 
-        form_row.addWidget(self.custom_url_input, stretch=3)
-        form_row.addWidget(self.custom_fta_input, stretch=1)
-        ctrl_layout.addLayout(form_row)
+        form_row1.addWidget(self.custom_url_input, stretch=3)
+        form_row1.addWidget(self.custom_fta_input, stretch=1)
+        form_layout.addLayout(form_row1)
+
+        form_row2 = QHBoxLayout()
+        form_row2.setSpacing(12)
+
+        self.custom_origin_input = QLineEdit()
+        self.custom_origin_input.setPlaceholderText("Origin Country/Region (e.g. Malaysia)")
+        self.custom_origin_input.setStyleSheet(
+            "padding: 10px; font-size: 12px;"
+        )
+
+        self.custom_destination_input = QLineEdit()
+        self.custom_destination_input.setPlaceholderText("Destination Country/Region (e.g. Japan)")
+        self.custom_destination_input.setStyleSheet(
+            "padding: 10px; font-size: 12px;"
+        )
+
+        form_row2.addWidget(self.custom_origin_input)
+        form_row2.addWidget(self.custom_destination_input)
+        form_layout.addLayout(form_row2)
+
+        ctrl_layout.addLayout(form_layout)
 
         # Status row (last run and progress bar)
         status_row = QHBoxLayout()
@@ -759,33 +773,7 @@ class CrawlerPage(QWidget):
         self.delete_btn.setVisible(is_admin)
         self.clear_crawled_btn.setVisible(is_admin)
 
-    def _run_crawler(self):
-        if self._crawler_worker and self._crawler_worker.isRunning():
-            return
 
-        from crawler.crawl4ai_service import HAS_CRAWL4AI
-        if not HAS_CRAWL4AI:
-            self._append_log("[System] ⚠️ crawl4ai is not installed.")
-            self._append_log("[System] Falling back to pre-loaded seed data (25 rules).")
-            QMessageBox.information(
-                self,
-                "Crawler Offline",
-                "crawl4ai is not installed.\n\n"
-                "The system is running in offline demo mode using the pre-loaded 25 seed tariff rules."
-            )
-            return
-
-        self._append_log("[System] Starting web crawler...")
-        self.crawl_btn.setEnabled(False)
-        self.index_btn.setEnabled(False)
-        self.stop_btn.setEnabled(True)
-        self.progress_bar.setVisible(True)
-
-        self._crawler_worker = CrawlerWorker()
-        self._crawler_worker.log_message.connect(self._append_log)
-        self._crawler_worker.finished.connect(self._on_crawler_done)
-        self._crawler_worker.error.connect(self._on_crawler_error)
-        self._crawler_worker.start()
 
     def _run_reindex(self):
         if self._index_worker and self._index_worker.isRunning():
@@ -803,28 +791,10 @@ class CrawlerPage(QWidget):
         self._index_worker.start()
 
     def _stop_crawler(self):
-        if self._crawler_worker and self._crawler_worker.isRunning():
-            self._crawler_worker.terminate()
-            self._append_log("[System] ⏹ Crawler stopped by user.")
         if hasattr(self, "_custom_worker") and self._custom_worker and self._custom_worker.isRunning():
             self._custom_worker.terminate()
             self._append_log("[System] ⏹ Custom crawler stopped by user.")
         self._reset_ui()
-
-    def _on_crawler_done(self, result: dict):
-        self._reset_ui()
-        self._last_run = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.last_run_label.setText(f"⏱️  Last Run: {self._last_run}")
-        self._append_log(
-            f"[System] ✅ Crawl complete — "
-            f"Found: {result['rules_found']} | "
-            f"Saved: {result['rules_saved']} | "
-            f"Sources: {result['sources_crawled']}"
-        )
-        if result["errors"]:
-            for err in result["errors"]:
-                self._append_log(f"[Error] {err}")
-        self._load_tariff_table()
 
     def _on_index_done(self, count: int):
         self._reset_ui()
@@ -839,6 +809,8 @@ class CrawlerPage(QWidget):
     def _run_custom_crawler(self):
         url = self.custom_url_input.text().strip()
         fta_name = self.custom_fta_input.text().strip()
+        origin_country = self.custom_origin_input.text().strip()
+        destination_country = self.custom_destination_input.text().strip()
         
         if not url:
             QMessageBox.warning(self, "Validation Error", "Please enter a valid website URL or PDF link to crawl.")
@@ -846,6 +818,14 @@ class CrawlerPage(QWidget):
             
         if not fta_name:
             QMessageBox.warning(self, "Validation Error", "Please enter the Agreement / FTA name for the crawled tariff rules.")
+            return
+
+        if not origin_country:
+            QMessageBox.warning(self, "Validation Error", "Please enter the Origin Country or Region.")
+            return
+
+        if not destination_country:
+            QMessageBox.warning(self, "Validation Error", "Please enter the Destination Country or Region.")
             return
 
         from crawler.crawl4ai_service import HAS_CRAWL4AI
@@ -865,7 +845,12 @@ class CrawlerPage(QWidget):
         self.index_btn.setEnabled(False)
         self.progress_bar.setVisible(True)
 
-        self._custom_worker = CustomCrawlerWorker(url, fta_name)
+        self._custom_worker = CustomCrawlerWorker(
+            url=url,
+            fta_name=fta_name,
+            origin_country=origin_country,
+            destination_country=destination_country,
+        )
         self._custom_worker.log_message.connect(self._append_log)
         self._custom_worker.finished.connect(self._on_custom_crawler_done)
         self._custom_worker.error.connect(self._on_crawler_error)

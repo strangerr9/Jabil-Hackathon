@@ -125,7 +125,7 @@ def insert_raw_crawls_bulk(rules: list[dict], source_url: str, crawl_run_id: str
         return 0
 
 
-def get_unprocessed_crawls(limit: int = 500) -> list[dict]:
+def get_unprocessed_crawls(limit: int = 10000) -> list[dict]:
     """
     Fetch raw crawl docs that have not been processed by ETL yet.
     Returns list of dicts with '_id' as string.

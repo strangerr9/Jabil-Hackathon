@@ -114,7 +114,7 @@ def clean_and_validate(raw_doc: dict) -> Optional[dict]:
 # ETL Runner
 # ─────────────────────────────────────────────
 def run_etl(
-    batch_size: int = 500,
+    batch_size: int = 10000,
     log_callback=None,
     refresh_vector_store: bool = True,
 ) -> dict:
