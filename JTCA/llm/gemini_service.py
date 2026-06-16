@@ -495,3 +495,150 @@ If no rules are found in the text, return an empty list: [].
         logger.error(f"Failed to extract rules using Gemini: {e}")
         return []
 
+
+def ask_assistant_question(query: str, rag_context: str) -> str:
+    """
+    Sends the user's natural language question and RAG context to Gemini to get a friendly conversational reply.
+    """
+    if not GEMINI_API_KEY:
+        return _demo_assistant_response(query)
+
+    system_instructions = (
+        "You are an expert trade compliance assistant named JTCA Compliance Assistant. "
+        "Your goal is to help users find HS Codes, product descriptions, and trade agreements (FTAs) "
+        "applicable to their query. Use the retrieved regulations context below to provide accurate, "
+        "compliance-based recommendations.\n\n"
+        "If the context does not contain enough information to resolve the query, state this clearly, but try to suggest the closest matches if possible. "
+        "Be helpful, professional, and clear. Format your response in clean Markdown. "
+        "Always highlight the HS code, tariff percentage, and trade agreement/FTA name clearly (e.g., using bold text or bullet points)."
+    )
+
+    prompt = f"""{system_instructions}
+
+=== RETRIEVED REGULATIONS CONTEXT ===
+{rag_context}
+
+=== USER QUERY ===
+{query}
+
+Provide your response in clear markdown format. Avoid general chat boilerplate; start directly with the analysis/answers.
+"""
+
+    try:
+        client = _get_client()
+        logger.info(f"Calling Gemini assistant for query: '{query[:50]}'")
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=prompt,
+        )
+        return response.text.strip()
+    except Exception as e:
+        logger.error(f"Gemini assistant API error: {e}")
+        return f"Error communicating with Gemini: {e}\n\nHere is a local search of retrieved regulations:\n\n{rag_context}"
+
+
+def _demo_assistant_response(query: str) -> str:
+    """
+    Demo fallback assistant response when no API key is configured.
+    Uses keyword matching for realistic simulation.
+    """
+    query_lower = query.lower()
+    
+    response = "### 🤖 JTCA Compliance Assistant (Demo Mode)\n\n"
+    response += "> **Note**: Gemini API key is not configured. Running in local simulation mode.\n\n"
+    
+    if "pcb" in query_lower or "printed circuit" in query_lower or "circuit board" in query_lower:
+        response += (
+            "Based on the knowledge base, here are the recommendations for **Printed Circuit Boards (PCB / PCBA)**:\n\n"
+            "- **Suggested HS Code**: `8473.30`\n"
+            "- **Description**: Parts and accessories of automatic data processing machines, printed circuit boards.\n"
+            "- **Tariff Rates & Agreements**:\n"
+            "  - **Origin: Malaysia -> Destination: USA**:\n"
+            "    - Tariff: **0.0%** under the **ITA Agreement** (Information Technology Agreement).\n"
+            "  - **Origin: China -> Destination: USA**:\n"
+            "    - Tariff: **25.0%** under the **Section 301 Tariff**.\n\n"
+            "**Compliance Notes**:\n"
+            "Ensure that you have proper certificate of origin documents to claim the 0% rate under the ITA. "
+            "Shipments from China are subject to the additional Section 301 duties unless an exclusion applies."
+        )
+    elif "laptop" in query_lower or "notebook" in query_lower or "computer" in query_lower:
+        response += (
+            "Here is the classification and trade agreement info for **Laptop / Notebook Computers**:\n\n"
+            "- **Suggested HS Code**: `8471.30`\n"
+            "- **Description**: Portable automatic data processing machines, weighing not more than 10 kg.\n"
+            "- **Tariff Rates & Agreements**:\n"
+            "  - **Origin: Malaysia -> Destination: USA**:\n"
+            "    - Tariff: **0.0%** under **USMCA / General MFN**.\n"
+            "  - **Origin: Vietnam -> Destination: Malaysia**:\n"
+            "    - Tariff: **0.0%** under the **ATIGA** (ASEAN Trade in Goods Agreement).\n\n"
+            "**Compliance Notes**:\n"
+            "Laptops generally benefit from duty-free status in most major jurisdictions under WTO ITA or bilateral trade agreements."
+        )
+    elif "processor" in query_lower or "cpu" in query_lower or "integrated circuit" in query_lower:
+        response += (
+            "Here are the details for **Processors / CPUs / Integrated Circuits**:\n\n"
+            "- **Suggested HS Code**: `8542.31`\n"
+            "- **Description**: Electronic integrated circuits, processors and controllers.\n"
+            "- **Tariff Rates & Agreements**:\n"
+            "  - **Origin: Malaysia -> Destination: USA**:\n"
+            "    - Tariff: **0.0%** under the **ITA Agreement**.\n"
+            "  - **Origin: China -> Destination: USA**:\n"
+            "    - Tariff: **25.0%** under **Section 301**.\n\n"
+            "**Compliance Notes**:\n"
+            "Integrated circuits are high-priority items under dual-use export control laws (ECCN classification might be required in addition to HS Code)."
+        )
+    elif "battery" in query_lower or "accumulator" in query_lower:
+        response += (
+            "Here is the compliance details for **Electrical Batteries / Accumulators**:\n\n"
+            "- **Suggested HS Code**: `8507.10`\n"
+            "- **Description**: Lead-acid accumulators, of a kind used for starting piston engines.\n"
+            "- **Tariff Rates & Agreements**:\n"
+            "  - **Origin: Malaysia -> Destination: USA**:\n"
+            "    - Tariff: **27.5%** under General **MFN Rate**.\n\n"
+            "**Compliance Notes**:\n"
+            "Batteries are classified as Hazardous Materials (Class 9) for shipping and require proper MSDS documentation."
+        )
+    elif "power supply" in query_lower or "psu" in query_lower or "converter" in query_lower:
+        response += (
+            "Here is the tariff and agreement classification for **Static Converters / Power Supply Units (PSU)**:\n\n"
+            "- **Suggested HS Code**: `8504.40`\n"
+            "- **Description**: Static converters, power supply units, switching power supply.\n"
+            "- **Tariff Rates & Agreements**:\n"
+            "  - **Origin: Malaysia -> Destination: USA**:\n"
+            "    - Tariff: **1.5%** under General **MFN Rate**.\n\n"
+            "**Compliance Notes**:\n"
+            "No specific trade agreements apply for Malaysia to USA other than MFN. Standard customs declaration applies."
+        )
+    elif "sensor" in query_lower:
+        response += (
+            "Here are the details for **Sensors / Temperature Sensors**:\n\n"
+            "- **Suggested HS Code**: `9025.19` or `9031.80`\n"
+            "- **Description**: Liquid-in glass thermometers, other instruments.\n"
+            "- **Tariff Rates & Agreements**:\n"
+            "  - **Origin: Japan -> Destination: Singapore**:\n"
+            "    - Tariff: **0.0%** under **CSFTA** (Japan-Singapore Agreement).\n\n"
+            "**Compliance Notes**:\n"
+            "Temperature instruments are subject to technical standard certifications in some destinations."
+        )
+    elif "agreement" in query_lower or "fta" in query_lower or "acfta" in query_lower or "usmca" in query_lower:
+        response += (
+            "The knowledge base contains several reference **Free Trade Agreements (FTAs)**:\n\n"
+            "1. **ACFTA** (ASEAN-China Free Trade Area): Reduces tariffs to 0% for most trade between China and ASEAN members (like Malaysia).\n"
+            "2. **USMCA** (United States-Mexico-Canada Agreement): Facilitates duty-free trade in North America.\n"
+            "3. **ITA Agreement** (Information Technology Agreement): A WTO agreement that eliminates duties on IT and electronics products globally.\n"
+            "4. **ATIGA** (ASEAN Trade in Goods Agreement): Eliminates tariffs on intra-ASEAN trade.\n\n"
+            "Specify the product name and route (e.g. *China to Malaysia*) to check details."
+        )
+    else:
+        response += (
+            f"I received your query: *\"{query}\"*\n\n"
+            "No specific match was found in the demo dataset. Here is what I can help you find:\n"
+            "- **HS Codes & Tariffs** for `PCB`, `Laptop`, `Processor`, `Battery`, `Power Supply`, `Sensor`.\n"
+            "- **Agreements** like `ACFTA`, `USMCA`, `ATIGA`, `ITA`.\n\n"
+            "Try asking: *\"What is the HS Code and agreement for PCBs?\"* or *\"Tell me about ACFTA\"*.\n\n"
+            "*(For fully customized answers, please add a valid `GEMINI_API_KEY` in the `.env` file)*"
+        )
+        
+    return response
+
+

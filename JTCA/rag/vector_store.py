@@ -115,14 +115,30 @@ def upsert_tariff_rules(rules: list[dict]):
     # Batch encode
     embeddings = encode_batch(documents)
 
-    # Upsert into ChromaDB
-    collection.upsert(
-        ids=ids,
-        documents=documents,
-        embeddings=embeddings,
-        metadatas=metadatas,
-    )
-    logger.info(f"Upserted {len(rules)} tariff rules into ChromaDB.")
+    # Get ChromaDB max batch size or use a safe default
+    client = _get_client()
+    max_batch_size = 5000
+    if client and hasattr(client, "get_max_batch_size"):
+        try:
+            max_batch_size = client.get_max_batch_size()
+        except Exception as e:
+            logger.warning(f"Could not retrieve max batch size: {e}")
+
+    # Upsert into ChromaDB in chunks
+    for i in range(0, len(rules), max_batch_size):
+        chunk_ids = ids[i : i + max_batch_size]
+        chunk_docs = documents[i : i + max_batch_size]
+        chunk_embs = embeddings[i : i + max_batch_size]
+        chunk_meta = metadatas[i : i + max_batch_size]
+
+        collection.upsert(
+            ids=chunk_ids,
+            documents=chunk_docs,
+            embeddings=chunk_embs,
+            metadatas=chunk_meta,
+        )
+
+    logger.info(f"Upserted {len(rules)} tariff rules into ChromaDB in batches of size {max_batch_size}.")
 
 
 def get_vector_count() -> int:

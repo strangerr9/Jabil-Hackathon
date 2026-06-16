@@ -838,6 +838,7 @@ class MainWindow(QMainWindow):
             ("📋", "Shipments"),
             ("🌐", "Web Crawler"),
             ("📊", "Reports"),
+            ("💬", "AI Assistant"),
         ]
         for icon, label in nav_items:
             btn = SidebarButton(icon, label)
@@ -946,7 +947,8 @@ class MainWindow(QMainWindow):
             1: "Shipments / All Shipments",
             2: "Web Crawler / Tariff Knowledge",
             3: "Reports / Analytics & Logs",
-            4: "Shipments / Shipment Details"
+            4: "AI Assistant / Chat Guidance",
+            5: "Shipments / Shipment Details"
         }
         self.breadcrumb_lbl.setText(breadcrumbs.get(index, "JTCA"))
         self.page_changed.emit(index)
@@ -969,6 +971,14 @@ class MainWindow(QMainWindow):
         else:
             self.theme_btn.setText("☀")
             self.theme_btn.setToolTip("Switch to Light Mode")
+            
+        # Propagate theme to all child pages (except self)
+        for page in self._pages:
+            if hasattr(page, "set_theme") and page != self:
+                try:
+                    page.set_theme(theme_name)
+                except Exception as e:
+                    pass
             
         self.apply_permissions()
 
